@@ -1,3 +1,9 @@
 [build]
   publish = "public"
   functions = "netlify/functions"
+
+[[redirects]]
+  from = "/api/pipedrive"
+  to = "/.netlify/functions/pipedrive"
+  status = 200
+  force = true
