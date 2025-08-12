@@ -2,21 +2,21 @@
   publish = "public"
   functions = "netlify/functions"
 
-# Pipedrive
+# Pipedrive (proxy)
 [[redirects]]
   from = "/api/pipedrive"
   to = "/.netlify/functions/pipedrive"
   status = 200
   force = true
 
-# Notion: catálogos (clase/categoría/etiquetas)
+# Notion: catálogos
 [[redirects]]
   from = "/api/notion-tags"
   to = "/.netlify/functions/notion-tags"
   status = 200
   force = true
 
-# Notion: plantillas (con filtros)
+# Notion: plantillas
 [[redirects]]
   from = "/api/notion-templates"
   to = "/.netlify/functions/notion-templates"
