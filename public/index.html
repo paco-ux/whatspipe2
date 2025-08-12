@@ -10,7 +10,7 @@
     body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;background:var(--bg);color:#e6edf3;margin:0;padding:24px}
     .container{max-width:980px;margin:0 auto}
     h1{font-size:26px;margin:0 0 18px;color:#a5d6ff}
-    p.hint{color:var(--muted);margin:4px 0 18px}
+    p.hint{color:#8ea0b5;margin:4px 0 18px}
     .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
     .row{display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:12px}
@@ -24,17 +24,14 @@
     .card{background:var(--card);border:1px solid #23314b;padding:16px;border-radius:14px;margin-bottom:12px}
     .preview{background:#0f1726;border:1px dashed #2a3b5d;padding:12px;border-radius:10px;min-height:70px}
     .inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .pill{padding:6px 8px;border-radius:999px;background:#223357;color:#bcd1ec;font-size:12px}
     .err{color:#ffd2d2;background:#4c1d1d;border:1px solid #7f1d1d;padding:10px;border-radius:8px;display:none;margin-top:8px}
     .ok{color:#dcffe7;background:#0e4026;border:1px solid #1b6f46;padding:10px;border-radius:8px;display:none;margin-top:8px}
-    small{color:#9fb2c9}
-    .footer{color:#7f91aa;font-size:12px;margin-top:18px}
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>WhatsPipe — Fase 3 · Pipedrive + Plantillas Notion (con Etiquetas)</h1>
-    <p class="hint">Carga datos de Pipedrive y selecciona plantillas reales de Notion con filtros por <em>Clase</em>, <em>Categoría</em> y <em>Etiquetas</em>.</p>
+    <h1>WhatsPipe — Fase 3 · Pipedrive + Plantillas Notion</h1>
+    <p class="hint">Si Notion marca 404, prueba el diagnóstico: <code>/api/notion-tags?db=TU_DB_ID</code> (debe ser el ID de la <b>base fuente</b> y la integración debe estar invitada a la página).</p>
 
     <!-- Pipedrive -->
     <div class="card">
@@ -65,7 +62,7 @@
       <div id="pdOk" class="ok"></div>
     </div>
 
-    <!-- Filtros Notion -->
+    <!-- Notion -->
     <div class="card">
       <div class="grid-3">
         <div>
@@ -111,7 +108,6 @@
 
       <div id="ntErr" class="err"></div>
       <div id="ntOk" class="ok"></div>
-      <div class="footer">Envío real a WhatsApp se activa en la siguiente fase.</div>
     </div>
   </div>
 
@@ -162,14 +158,14 @@
     try{
       const r = await (await fetch('/api/notion-tags')).json();
       if(!r.ok) throw new Error(r.error || 'No OK');
-      fillSelectOptions($('fClase'), [''], r.clases);
-      fillSelectOptions($('fCategoria'), [''], r.categorias);
-      fillSelectOptions($('fEtiquetas'), [], r.etiquetas, true);
+      fillSelect($('fClase'), [''], r.clases);
+      fillSelect($('fCategoria'), [''], r.categorias);
+      fillSelect($('fEtiquetas'), [], r.etiquetas, true);
       show($('ntOk'), 'Catálogos actualizados.');
     }catch(e){ show($('ntErr'), 'Error cargando catálogos: '+(e.message||e)); }
   }
 
-  function fillSelectOptions(sel, prefixList, items, multiple=false){
+  function fillSelect(sel, prefixList, items, multiple=false){
     sel.innerHTML = '';
     (prefixList||[]).forEach(v=>{
       const o=document.createElement('option'); o.value=v; o.textContent= v===''?'Todas':''+v; sel.appendChild(o);
@@ -200,17 +196,16 @@
       const r = await (await fetch('/api/notion-templates?'+params.toString())).json();
       if(!r.ok) throw new Error(r.error || 'No OK');
       const sel = $('plantilla'); sel.innerHTML = '<option value="">-- Selecciona una plantilla --</option>';
-      (r.data||[]).forEach(p=>{
+      (r.data || r.templates || []).forEach(p=>{
+        const msg = p.mensaje || '';
+        const name = p.nombre || p.name || '(sin título)';
+        const claseTxt = p.clase ? ` — ${p.clase}` : '';
         const o=document.createElement('option');
-        o.value = p.mensaje || '';
-        o.textContent = p.nombre ? `${p.nombre}${p.clase ? ' — '+p.clase : ''}` : '(sin título)';
-        o.dataset.id = p.id;
-        o.dataset.clase = p.clase || '';
-        o.dataset.categorias = (p.categorias||[]).join(',');
-        o.dataset.etiquetas = (p.etiquetas||[]).join(',');
+        o.value = msg;
+        o.textContent = `${name}${claseTxt}`;
         sel.appendChild(o);
       });
-      show($('ntOk'), `Plantillas cargadas: ${r.count}`);
+      show($('ntOk'), `Plantillas cargadas: ${r.count ?? r.total ?? 0}`);
     }catch(e){ show($('ntErr'), 'Error cargando plantillas: '+(e.message||e)); }
   }
 
