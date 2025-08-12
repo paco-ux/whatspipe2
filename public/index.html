@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>WhatsPipe — Pipedrive + Gestor de Plantillas</title>
+<style>
+:root{--bg:#0b1220;--card:#121a2b;--muted:#8ea0b5;--accent:#4cc38a;--accent2:#3aa876}
+*{box-sizing:border-box}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;background:var(--bg);color:#e6edf3;margin:0}
+.wrap{max-width:1000px;margin:0 auto;padding:22px}
+h1{margin:0 0 14px;color:#a5d6ff}
+.card{background:var(--card);border:1px solid #23314b;border-radius:12px;padding:14px;margin:12px 0}
+label{display:block;font-size:12px;color:#c7d4e5;margin:8px 0 4px}
+input,select,textarea{width:100%;padding:10px;border:1px solid #23314b;border-radius:10px;background:#0f1726;color:#e6edf3}
+textarea{min-height:90px}
+.btn{background:var(--accent);color:#052014;font-weight:700;border:0;border-radius:10px;padding:10px 14px;cursor:pointer}
+.btn:hover{background:var(--accent2)}
+.btn-sec{background:#23314b;color:#c7d4e5}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.row{display:grid;grid-template-columns:1fr;gap:12px}
+.tabs{display:flex;gap:8px;margin-bottom:10px}
+.tab{padding:8px 10px;border-radius:10px;border:1px solid #23314b;background:#0f1726;cursor:pointer}
+.tab.active{background:#213252}
+.badge{background:#223357;border-radius:999px;padding:3px 8px;font-size:11px;margin-left:6px}
+.err{display:none;background:#4c1d1d;border:1px solid #7f1d1d;color:#ffd2d2;border-radius:8px;padding:10px;margin-top:8px}
+.ok{display:none;background:#0e4026;border:1px solid #1b6f46;color:#dcffe7;border-radius:8px;padding:10px;margin-top:8px}
+.table{width:100%;border-collapse:collapse}
+.table th,.table td{border-bottom:1px solid #23314b;padding:8px;text-align:left;font-size:14px}
+.preview{background:#0f1726;border:1px dashed #2a3b5d;border-radius:10px;padding:12px;min-height:64px}
+.small{color:#8ea0b5;font-size:12px}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>WhatsPipe</h1>
+  <div class="tabs">
+    <div class="tab active" data-tab="mensajes">Mensajes</div>
+    <div class="tab" data-tab="plantillas">Gestor de plantillas <span class="badge">CSV</span></div>
+  </div>
+
+  <!-- MENSAJES -->
+  <section id="mensajes" class="card">
+    <h3>1) Cargar contacto desde Pipedrive</h3>
+    <div class="grid2">
+      <div>
+        <label for="pdurl">Link o ID de Pipedrive</label>
+        <input id="pdurl" placeholder="https://tuempresa.pipedrive.com/deal/12345 o 12345"/>
+      </div>
+      <div>
+        <label>&nbsp;</label>
+        <button class="btn" id="btnPd">Cargar desde Pipedrive</button>
+      </div>
+    </div>
+    <label><input type="checkbox" id="addmx" /> Agregar +52 si falta (México)</label>
+    <div class="grid2">
+      <div>
+        <label for="nombre">Nombre</label>
+        <input id="nombre" placeholder="Ej. Ana López"/>
+      </div>
+      <div>
+        <label for="telefono">Teléfono</label>
+        <input id="telefono" placeholder="Ej. 521234567890"/>
+      </div>
+    </div>
+    <div id="pdErr" class="err"></div>
+    <div id="pdOk" class="ok"></div>
+
+    <h3 style="margin-top:18px">2) Elegir plantilla del repositorio</h3>
+    <div class="grid3">
+      <div>
+        <label for="fClase">Clase</label>
+        <select id="fClase"><option value="">Todas</option></select>
+      </div>
+      <div>
+        <label for="fCategoria">Categoría</label>
+        <select id="fCategoria"><option value="">Todas</option></select>
+      </div>
+      <div>
+        <label for="fEtiqueta">Etiqueta</label>
+        <select id="fEtiqueta"><option value="">Todas</option></select>
+      </div>
+    </div>
+    <div class="grid2">
+      <div>
+        <label for="plantilla">Plantilla</label>
+        <select id="plantilla"><option value="">-- Selecciona una plantilla --</option></select>
+      </div>
+      <div>
+        <label for="q">Buscar</label>
+        <input id="q" placeholder="buscar por nombre..."/>
+      </div>
+    </div>
+
+    <label for="libre">Mensaje libre (opcional)</label>
+    <textarea id="libre" placeholder="Escribe desde cero si no quieres usar una plantilla"></textarea>
+
+    <label>Vista previa</label>
+    <div id="preview" class="preview">Aquí aparecerá tu mensaje…</div>
+    <div class="row">
+      <button class="btn" id="btnPreview">Generar vista previa</button>
+      <button class="btn btn-sec" id="btnSim">Simular envío</button>
+    </div>
+  </section>
+
+  <!-- GESTOR DE PLANTILLAS -->
+  <section id="plantillas" class="card hidden">
+    <div class="grid2">
+      <div>
+        <h3>Gestión</h3>
+        <div class="small">Para crear/editar/eliminar/importar necesitas tu <b>Admin Key</b>.</div>
+      </div>
+      <div>
+        <label for="adminkey">Admin Key</label>
+        <input id="adminkey" placeholder="pégala aquí (se guarda local)"/>
+      </div>
+    </div>
+
+    <div class="row">
+      <button class="btn" id="btnNew">Nueva plantilla</button>
+      <button class="btn btn-sec" id="btnExport">Exportar CSV</button>
+      <label class="small">Importar CSV
+        <input type="file" id="csv" accept=".csv"/>
+      </label>
+    </div>
+
+    <div id="tplMsg" class="ok"></div>
+    <div id="tplErr" class="err"></div>
+
+    <table class="table" id="tbl">
+      <thead>
+        <tr><th>Nombre</th><th>Clase</th><th>Categorías</th><th>Etiquetas</th><th>Acciones</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+
+    <!-- Editor -->
+    <div id="editor" class="card hidden">
+      <h4 id="editorTitle">Nueva plantilla</h4>
+      <input type="hidden" id="eid"/>
+      <label>Nombre</label><input id="enombre"/>
+      <label>Clase</label><input id="eclase" placeholder="Ventas, Cobranza, Soporte…"/>
+      <label>Categorías (separadas por ;)</label><input id="ecategorias" placeholder="Onboarding;Recordatorio"/>
+      <label>Etiquetas (separadas por ;)</label><input id="eetiquetas" placeholder="frío;vip"/>
+      <label>Mensaje</label><textarea id="emensaje" placeholder="Hola {nombre}, …"></textarea>
+      <div class="row">
+        <button class="btn" id="btnSave">Guardar</button>
+        <button class="btn btn-sec" id="btnCancel">Cancelar</button>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const show=(el,msg)=>{ if(msg!==undefined) el.textContent=msg; el.style.display='block'; el.classList.remove('hidden'); };
+const hide=el=>{ el.style.display='none'; el.classList.add('hidden'); };
+
+// Tabs
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick=()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    const tab=t.dataset.tab;
+    $('mensajes').classList.toggle('hidden', tab!=='mensajes');
+    $('plantillas').classList.toggle('hidden', tab!=='plantillas');
+  }
+});
+
+// Admin key
+$('adminkey').value = localStorage.getItem('WP_ADMIN_KEY')||'';
+$('adminkey').addEventListener('input', e=>localStorage.setItem('WP_ADMIN_KEY', e.target.value.trim()));
+
+// Pipedrive
+function parsePipedriveInput(input){
+  input=(input||'').trim();
+  try{
+    if(input.startsWith('http')){
+      const u = new URL(input);
+      const [t,id]=u.pathname.split('/').filter(Boolean);
+      if(t&&id) return { type:({person:'person',persons:'person',deal:'deal',deals:'deal',organization:'organization',organizations:'organization'}[t.toLowerCase()]||'person'), id:id.replace(/\D/g,'') };
+    }
+  }catch(e){}
+  if(/^\d+$/.test(input)) return {type:'person', id:input};
+  return null;
+}
+const sanitize=(p,addMX)=>{ let d=String(p||'').replace(/\D/g,''); if(addMX&&d.length===10)d='52'+d; return d; };
+
+$('btnPd').onclick=async()=>{
+  hide($('pdErr')); hide($('pdOk'));
+  const parsed=parsePipedriveInput($('pdurl').value);
+  if(!parsed){ show($('pdErr'),'No pude interpretar el link o ID.'); return; }
+  try{
+    const r=await fetch(`/api/pipedrive?entity=${encodeURIComponent(parsed.type)}&id=${encodeURIComponent(parsed.id)}`).then(r=>r.json());
+    if(!r.ok) throw new Error(r.error||'Respuesta no OK');
+    $('nombre').value=r.data.name||'';
+    $('telefono').value=sanitize(r.data.phone,$('addmx').checked);
+    show($('pdOk'),`Datos cargados (${parsed.type} #${parsed.id})`);
+  }catch(e){ show($('pdErr'),`Error: ${e.message||e}`); }
+};
+
+// Repo: cargar plantillas + filtros
+let TEMPLATES=[];
+async function refreshRepo(){
+  const p = new URLSearchParams();
+  if($('fClase').value) p.set('clase',$('fClase').value);
+  if($('fCategoria').value) p.set('categoria',$('fCategoria').value);
+  if($('fEtiqueta').value) p.set('tag',$('fEtiqueta').value);
+  if($('q').value) p.set('q',$('q').value);
+  const res=await fetch('/api/templates-list?'+p.toString()).then(r=>r.json());
+  TEMPLATES=res.data||[];
+  // selects meta
+  const meta=res.meta||{clases:[],categorias:[],etiquetas:[]};
+  fillSelect($('fClase'),[''],meta.clases);
+  fillSelect($('fCategoria'),[''],meta.categorias);
+  fillSelect($('fEtiqueta'),[''],meta.etiquetas);
+  // plantillas
+  const sel=$('plantilla'); sel.innerHTML='<option value="">-- Selecciona una plantilla --</option>';
+  TEMPLATES.forEach(t=>{
+    const o=document.createElement('option');
+    o.value=t.mensaje||'';
+    o.textContent=(t.nombre||'(sin título)')+(t.clase?` — ${t.clase}`:'');
+    o.dataset.id=t.id;
+    sel.appendChild(o);
+  });
+  renderTable();
+}
+function fillSelect(sel,prefix,items){
+  const keep=sel.value; sel.innerHTML='';
+  (prefix||[]).forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v===''?'Todas':v; sel.appendChild(o);});
+  (items||[]).forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v; sel.appendChild(o);});
+  if([...sel.options].some(o=>o.value===keep)) sel.value=keep;
+}
+['fClase','fCategoria','fEtiqueta','q'].forEach(id=>$(id).addEventListener('input',()=>refreshRepo()));
+
+// Vista previa
+$('btnPreview').onclick=()=>{
+  const nombre=$('nombre').value||'{nombre}';
+  const tel=$('telefono').value||'{telefono}';
+  const base=$('plantilla').value||'';
+  const libre=$('libre').value||'';
+  let msg=(libre||base).replaceAll('{nombre}',nombre).replaceAll('{telefono}',tel).replaceAll('{fecha}','XX/XX/XXXX');
+  $('preview').textContent=msg||'...';
+};
+$('btnSim').onclick=()=>{
+  const tel=$('telefono').value.trim(); if(!tel){alert('Completa teléfono');return;}
+  const text=$('preview').textContent||''; if(!text){alert('Genera la vista previa');return;}
+  alert(`Simulación: wa.me/${tel}?text=${encodeURIComponent(text)}`);
+};
+
+// Tabla gestor
+function renderTable(){
+  const tb=$('tbl').querySelector('tbody'); tb.innerHTML='';
+  TEMPLATES.forEach(t=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${t.nombre||''}</td><td>${t.clase||''}</td>
+      <td>${(t.categorias||[]).join('; ')}</td><td>${(t.etiquetas||[]).join('; ')}</td>
+      <td><button class="btn btn-sec" data-edit="${t.id}">Editar</button>
+          <button class="btn" data-del="${t.id}">Eliminar</button></td>`;
+    tb.appendChild(tr);
+  });
+  tb.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openEditor(b.dataset.edit));
+  tb.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>delTemplate(b.dataset.del));
+}
+
+// Editor
+function openEditor(id){
+  const t = TEMPLATES.find(x=>x.id===id)||{};
+  $('eid').value=t.id||'';
+  $('enombre').value=t.nombre||'';
+  $('eclase').value=t.clase||'';
+  $('ecategorias').value=(t.categorias||[]).join(';');
+  $('eetiquetas').value=(t.etiquetas||[]).join(';');
+  $('emensaje').value=t.mensaje||'';
+  $('editorTitle').textContent = id ? 'Editar plantilla' : 'Nueva plantilla';
+  hide($('tplMsg')); hide($('tplErr')); $('editor').classList.remove('hidden');
+}
+$('btnNew').onclick=()=>openEditor();
+$('btnCancel').onclick=()=>$('editor').classList.add('hidden');
+
+$('btnSave').onclick=async()=>{
+  const key=localStorage.getItem('WP_ADMIN_KEY')||'';
+  if(!key){ show($('tplErr'),'Falta Admin Key.'); return; }
+  const payload={
+    id:$('eid').value||undefined,
+    nombre:$('enombre').value.trim(),
+    clase:$('eclase').value.trim(),
+    categorias:($('ecategorias').value||'').split(';').map(s=>s.trim()).filter(Boolean),
+    etiquetas:($('eetiquetas').value||'').split(';').map(s=>s.trim()).filter(Boolean),
+    mensaje:$('emensaje').value
+  };
+  try{
+    const r=await fetch('/api/templates-upsert',{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Key':key},body:JSON.stringify(payload)}).then(r=>r.json());
+    if(!r.ok) throw new Error(r.error||'No OK');
+    show($('tplMsg'), r.created ? 'Creada' : 'Actualizada');
+    $('editor').classList.add('hidden');
+    await refreshRepo();
+  }catch(e){ show($('tplErr'), `Error: ${e.message||e}`); }
+};
+
+async function delTemplate(id){
+  const key=localStorage.getItem('WP_ADMIN_KEY')||'';
+  if(!key){ show($('tplErr'),'Falta Admin Key.'); return; }
+  if(!confirm('¿Eliminar plantilla?')) return;
+  try{
+    const r=await fetch('/api/templates-delete',{method:'POST',headers:{'Content-Type':'application/json','X-Admin-Key':key},body:JSON.stringify({id})}).then(r=>r.json());
+    if(!r.ok) throw new Error(r.error||'No OK');
+    show($('tplMsg'),'Eliminada'); await refreshRepo();
+  }catch(e){ show($('tplErr'), `Error: ${e.message||e}`); }
+}
+
+// Import/Export
+$('btnExport').onclick=()=>{ window.location.href='/api/templates-export.csv'; };
+$('csv').onchange=async(e)=>{
+  const file=e.target.files?.[0]; if(!file) return;
+  const key=localStorage.getItem('WP_ADMIN_KEY')||''; if(!key){ alert('Falta Admin Key'); return; }
+  const text=await file.text();
+  try{
+    const r=await fetch('/api/templates-import',{method:'POST',headers:{'Content-Type':'text/csv','X-Admin-Key':key},body:text}).then(r=>r.json());
+    if(!r.ok) throw new Error(r.error||'No OK');
+    show($('tplMsg'), `Importadas: ${r.created}, Actualizadas: ${r.updated}`);
+    await refreshRepo();
+    e.target.value='';
+  }catch(err){ show($('tplErr'), 'Error importando: '+(err.message||err)); }
+};
+
+// Cargar inicialmente
+refreshRepo();
+</script>
+</body>
+</html>
