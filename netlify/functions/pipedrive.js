@@ -1,6 +1,4 @@
-// Proxy seguro para Pipedrive (usa env PIPEDRIVE_API_TOKEN)
-const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
-
+// Proxy para Pipedrive. Requiere env PIPEDRIVE_API_TOKEN
 const CORS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET,OPTIONS",
