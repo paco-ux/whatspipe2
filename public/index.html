@@ -69,34 +69,61 @@
   <script>
     const $ = id => document.getElementById(id);
 
-    async function loadFromPipedrive() {
-      const url = $('pipedriveUrl').value.trim();
-      const addMX = $('addMX').checked;
-      $('pipedriveError').style.display = 'none';
-
-      try {
-        const r = await fetch(`/api/pipedrive-proxy?url=${encodeURIComponent(url)}`);
-        if (!r.ok) throw new Error(await r.text());
-        const data = await r.json();
-
-        if ($('nombre')) $('nombre').value = data.name || '';
-        if ($('telefono')) $('telefono').value = sanitizePhone(data.phone, addMX);
-
-      } catch (err) {
-        $('pipedriveError').innerText = `Error vía proxy: ${err.message}`;
-        $('pipedriveError').style.display = 'block';
-      }
+    function parsePipedriveInput(input){
+      input = (input||'').trim();
+      try{
+        if(input.startsWith('http')){
+          const u = new URL(input);
+          const [type, id] = u.pathname.split('/').filter(Boolean);
+          if (type && id) return { type: normalize(type), id: id.replace(/\D/g,'') };
+        }
+      }catch(e){}
+      if (/^\d+$/.test(input)) return { type: 'person', id: input };
+      return null;
     }
 
-    function sanitizePhone(phone, addMX) {
-      let clean = (phone || '').replace(/\D/g, '');
-      if (addMX && !clean.startsWith('52')) clean = '52' + clean;
-      return clean;
+    const normalize = t => ({
+      person:'person',persons:'person',
+      deal:'deal',deals:'deal',
+      organization:'organization',organizations:'organization'
+    }[String(t).toLowerCase()] || 'person');
+
+    const sanitizePhone = (raw, addMX) => {
+      let d=String(raw||'').replace(/\D/g,'');
+      if(addMX && d.length===10) d='52'+d;
+      return d;
+    };
+
+    async function loadFromPipedrive(){
+      const input = $('pipedriveUrl').value;
+      const addMX = $('addMX').checked;
+      const parsed = parsePipedriveInput(input);
+      const err = $('pipedriveError');
+      err.style.display = 'none';
+
+      if (!parsed){ 
+        err.textContent = 'No pude interpretar el link o ID.'; 
+        err.style.display='block'; 
+        return; 
+      }
+
+      try {
+        const res = await fetch(`/api/pipedrive?entity=${encodeURIComponent(parsed.type)}&id=${encodeURIComponent(parsed.id)}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const r = await res.json();
+        if (!r.ok) throw new Error(r.error || 'Respuesta no OK');
+
+        $('nombre').value = r.data.name || '';
+        $('telefono').value = sanitizePhone(r.data.phone, addMX);
+      } catch (e){
+        err.textContent = `Error vía proxy: ${e.message || e}`;
+        err.style.display = 'block';
+      }
     }
 
     function generatePreview() {
       const nombre = $('nombre')?.value || '{nombre}';
-      const mensaje = $('mensajeLibre')?.value || '';
+      const mensaje = $('mensajeLibre')?.value || 'Hola {nombre}, te escribo para coordinar tu seguimiento.';
       $('preview').innerText = mensaje.replace('{nombre}', nombre);
     }
 
