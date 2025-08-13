@@ -12,6 +12,7 @@ body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sa
 h1{margin:0 0 10px;color:#a5d6ff}
 .card{background:var(--card);border:1px solid var(--br);border-radius:12px;padding:16px;margin:12px 0}
 label{display:block;font-size:12px;color:#c8d6ea;margin:8px 0 6px}
+input,select,textarea,button{font:inherit}
 input,select,textarea{width:100%;padding:10px;border:1px solid var(--br);border-radius:10px;background:#0f1726;color:#e6edf3}
 textarea{min-height:140px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -21,16 +22,19 @@ textarea{min-height:140px}
 .small{color:var(--muted);font-size:12px}
 .err{display:none;background:#4c1d1d;border:1px solid #7f1d1d;color:#ffd2d2;border-radius:8px;padding:10px;margin-top:8px}
 .ok{display:none;background:#0e4026;border:1px solid #1b6f46;color:#dcffe7;border-radius:8px;padding:10px;margin-top:8px}
-
-#tplList{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
-.tpl{border:1px solid #2b3e61;border-radius:10px;padding:10px;background:#0f1726;cursor:pointer;transition:transform .08s ease}
-.tpl:hover{transform:translateY(-1px);border-color:#3f5c8a}
-.tpl h4{margin:0 0 6px;font-size:14px;color:#cfe7ff}
-.badges{display:flex;gap:6px;flex-wrap:wrap}
-.badge{font-size:11px;background:#13223a;border:1px solid #2b3e61;border-radius:999px;padding:2px 8px;color:#cfe}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.pill{background:#13223a;border:1px solid #2b3e61;border-radius:999px;padding:6px 10px;color:#cfe;cursor:pointer}
+.pill[aria-pressed="true"]{outline:2px solid #3f5c8a}
+#tplList{margin-top:12px;border:1px solid #2b3e61;border-radius:10px;overflow:hidden}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th,.tbl td{padding:10px;border-bottom:1px solid #21324e}
+.tbl th{font-size:12px;color:#a9c4e8;text-align:left;background:#0f1828}
+.tbl tr:hover{background:#0f1726}
+.badge{font-size:11px;background:#13223a;border:1px solid #2b3e61;border-radius:999px;padding:2px 8px;color:#cfe;margin-right:6px;display:inline-block}
+.star{cursor:pointer;user-select:none;font-size:18px}
+.star.on{color:#ffd166}
+.star.off{color:#48607f}
 #editor{background:#0f1726;border:1px dashed #2b3e61;border-radius:10px}
-@media (max-width:900px){ #tplList{grid-template-columns:1fr 1fr} }
-@media (max-width:640px){ #tplList{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
@@ -72,7 +76,7 @@ textarea{min-height:140px}
     </div>
   </div>
 
-  <!-- 3) Filtros y resultados de plantillas -->
+  <!-- 3) Filtros + acciones -->
   <div class="card">
     <h3>3) Plantillas (desde Notion)</h3>
     <div class="grid3">
@@ -89,14 +93,35 @@ textarea{min-height:140px}
         <select id="categoria"><option value="">Todas</option></select>
       </div>
     </div>
+
+    <div class="toolbar">
+      <button class="pill" id="btnFavs" aria-pressed="false">⭐ Mis favoritas</button>
+      <button class="pill" id="btnMasUsadas" aria-pressed="false">🔥 Más usadas</button>
+    </div>
+
     <div id="tplOk" class="ok"></div>
     <div id="tplErr" class="err"></div>
 
-    <!-- Recuadro con listado de resultados -->
-    <div id="tplList"></div>
+    <!-- Lista/tabla de plantillas -->
+    <div id="tplList">
+      <table class="tbl" aria-label="Plantillas">
+        <thead>
+          <tr>
+            <th style="width:32px;"></th>
+            <th>Nombre</th>
+            <th>Clase/Categoría</th>
+            <th>Etiquetas</th>
+            <th style="width:90px;">Usos</th>
+          </tr>
+        </thead>
+        <tbody id="tplBody">
+          <tr><td colspan="5" class="small" style="padding:14px">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 
-  <!-- 4) Editor (autorrelleno al elegir plantilla, siempre editable) -->
+  <!-- 4) Editor -->
   <div class="card">
     <h3>4) Mensaje</h3>
     <textarea id="editor" placeholder="Selecciona una plantilla o escribe tu mensaje aquí…"></textarea>
@@ -110,8 +135,8 @@ textarea{min-height:140px}
 <script>
 const $=id=>document.getElementById(id);
 
-// Estado
-const state={ all:[], filtered:[], selectedTemplate:null };
+// Estado & contexto
+const state={ all:[], filtered:[], selected:null, onlyFavs:false, orderByUsage:false };
 const PDCTX = { person:{}, deal:{}, organization:{}, flat:{} };
 
 // Utils
@@ -126,14 +151,13 @@ function getByPath(obj, path){
   try{ return path.split('.').reduce((o,k)=> (o && (k in o)) ? o[k] : undefined, obj) }catch{ return undefined; }
 }
 
-// Alias
+// Alias placeholders
 const ALIAS = {
   nombre:'nombre', telefono:'telefono', fecha:'fecha',
   empresa:'organization.name', organizacion:'organization.name',
   monto:'deal.value', moneda:'deal.currency', etapa:'deal.stage_name',
   titulo:'deal.title', correo:'person.email'
 };
-
 function resolveToken(key, ctx){
   if (ALIAS[key] && ALIAS[key] !== key) key = ALIAS[key];
   if (key==='nombre') return ctx.nombre || '';
@@ -142,7 +166,6 @@ function resolveToken(key, ctx){
   const v = getByPath(PDCTX, key);
   return (v!==undefined && v!==null) ? String(v) : undefined;
 }
-
 function replacePlaceholders(text, ctx){
   const base = String(text||'');
   return base.replace(/\{([^}]+)\}/g, (_, token)=>{
@@ -170,12 +193,10 @@ function parsePipedriveInput(input){
   if (/^\d+$/.test(input)) return {entity:'person', id:input};
   return null;
 }
-
 $('btnPd').onclick = async ()=>{
   $('pdErr').style.display='none'; $('pdOk').style.display='none';
   const parsed = parsePipedriveInput($('pdurl').value);
   if (!parsed){ $('pdErr').textContent='No pude interpretar el link o ID.'; $('pdErr').style.display='block'; return; }
-
   try{
     const r = await fetch(`/api/pipedrive?entity=${encodeURIComponent(parsed.entity)}&id=${encodeURIComponent(parsed.id)}`);
     const j = await r.json();
@@ -192,77 +213,14 @@ $('btnPd').onclick = async ()=>{
     $('pdOk').textContent = `Datos cargados (${parsed.entity} #${parsed.id})`;
     $('pdOk').style.display='block';
 
-    // Si ya hay una plantilla seleccionada, refresca el editor con datos
-    if (state.selectedTemplate) fillEditorWithTemplate(state.selectedTemplate);
+    if (state.selected) fillEditor(state.selected);
   }catch(e){
     $('pdErr').textContent = 'Error: '+(e.message||e);
     $('pdErr').style.display='block';
   }
 };
 
-// Plantillas (Notion)
-function renderFacetOptions(){
-  const clases=[...new Set(state.all.map(x=>x.clase).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-  const cats=[...new Set(state.all.map(x=>x.categoria).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
-  const sClase=$('clase'), sCat=$('categoria');
-  const keepC=sClase.value, keepK=sCat.value;
-  sClase.innerHTML='<option value="">Todas</option>'+clases.map(v=>`<option>${v}</option>`).join('');
-  sCat.innerHTML='<option value="">Todas</option>'+cats.map(v=>`<option>${v}</option>`).join('');
-  if ([...sClase.options].some(o=>o.value===keepC)) sClase.value=keepC;
-  if ([...sCat.options].some(o=>o.value===keepK)) sCat.value=keepK;
-}
-
-function applyFilters(){
-  const q=($('buscador').value||'').toLowerCase().trim();
-  const c=($('clase').value||'').toLowerCase().trim();
-  const k=($('categoria').value||'').toLowerCase().trim();
-  state.filtered = state.all.filter(t=>{
-    if (c && (t.clase||'').toLowerCase()!==c) return false;
-    if (k && (t.categoria||'').toLowerCase()!==k) return false;
-    if (q && !String(t.nombre||'').toLowerCase().includes(q)) return false;
-    return true;
-  });
-  renderTemplateList();
-}
-
-function renderTemplateList(){
-  const box = $('tplList');
-  box.innerHTML = '';
-  if (!state.filtered.length){
-    box.innerHTML = '<div class="small" style="opacity:.8">No hay resultados con el filtro actual.</div>';
-    return;
-  }
-  state.filtered.forEach(t=>{
-    const card = document.createElement('div');
-    card.className = 'tpl';
-    card.dataset.id = t.id;
-    card.dataset.mensaje = t.mensaje || '';
-    card.innerHTML = `
-      <h4>${t.nombre || '(Sin nombre)'}</h4>
-      <div class="badges">
-        ${t.clase ? `<span class="badge">${t.clase}</span>`:''}
-        ${t.categoria ? `<span class="badge">${t.categoria}</span>`:''}
-        ${(t.etiquetas||[]).slice(0,4).map(e=>`<span class="badge">#${e}</span>`).join('')}
-      </div>
-    `;
-    card.onclick = ()=> {
-      state.selectedTemplate = t;
-      fillEditorWithTemplate(t); // Autorrellena editor
-      // scroll suave hacia el editor
-      document.getElementById('editor').scrollIntoView({behavior:'smooth', block:'center'});
-    };
-    box.appendChild(card);
-  });
-}
-
-function fillEditorWithTemplate(tpl){
-  const nombre = $('nombre').value || '';
-  const telefono = sanitizePhone($('telefono').value, true);
-  const base = tpl?.mensaje || '';
-  const final = replacePlaceholders(base, {nombre, telefono});
-  $('editor').value = final;
-}
-
+// Notion — cargar lista
 async function cargarPlantillas(){
   try{
     const r = await fetch('/api/templates-list');
@@ -273,40 +231,171 @@ async function cargarPlantillas(){
     $('tplOk').style.display='block';
     $('tplErr').style.display='none';
     renderFacetOptions();
-    state.filtered = state.all.slice();
-    renderTemplateList();
+    applyFilters();
   }catch(e){
     $('tplErr').textContent = 'Error cargando plantillas: '+(e.message||e);
     $('tplErr').style.display='block';
     $('tplOk').style.display='none';
   }
 }
+function renderFacetOptions(){
+  const clases=[...new Set(state.all.map(x=>x.clase).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  const cats=[...new Set(state.all.map(x=>x.categoria).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  const sClase=$('clase'), sCat=$('categoria');
+  const keepC=sClase.value, keepK=sCat.value;
+  sClase.innerHTML='<option value="">Todas</option>'+clases.map(v=>`<option>${v}</option>`).join('');
+  sCat.innerHTML='<option value="">Todas</option>'+cats.map(v=>`<option>${v}</option>`).join('');
+  if ([...sClase.options].some(o=>o.value===keepC)) sClase.value=keepC;
+  if ([...sCat.options].some(o=>o.value===keepK)) sCat.value=keepK;
+}
+function applyFilters(){
+  const q=($('buscador').value||'').toLowerCase().trim();
+  const c=($('clase').value||'').toLowerCase().trim();
+  const k=($('categoria').value||'').toLowerCase().trim();
 
-// Editor
-$('btnPreview').addEventListener('click', ()=>{
-  // “Actualizar con datos” vuelve a sustituir tokens sobre el contenido actual del editor
+  let arr = state.all.filter(t=>{
+    if (c && (t.clase||'').toLowerCase()!==c) return false;
+    if (k && (t.categoria||'').toLowerCase()!==k) return false;
+    if (state.onlyFavs && !t.favorita) return false;
+    if (q && !String(t.nombre||'').toLowerCase().includes(q)) return false;
+    return true;
+  });
+  if (state.orderByUsage){
+    arr = arr.slice().sort((a,b)=>(b.usos||0)-(a.usos||0));
+  }
+  state.filtered = arr;
+  renderTemplateTable();
+}
+
+function renderTemplateTable(){
+  const tb = $('tplBody');
+  tb.innerHTML = '';
+  if (!state.filtered.length){
+    tb.innerHTML = `<tr><td colspan="5" class="small" style="padding:14px">No hay resultados con el filtro actual.</td></tr>`;
+    return;
+  }
+  state.filtered.forEach(t=>{
+    const tr = document.createElement('tr');
+
+    // estrella
+    const tdStar = document.createElement('td');
+    const star = document.createElement('span');
+    star.className = 'star ' + (t.favorita ? 'on':'off');
+    star.textContent = '★';
+    star.title = t.favorita ? 'Quitar de favoritas':'Marcar como favorita';
+    star.onclick = async (ev)=>{
+      ev.stopPropagation();
+      const nueva = !t.favorita;
+      star.className = 'star ' + (nueva?'on':'off'); // feedback inmediato
+      try{
+        await fetch('/api/templates-favorite', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ pageId: t.id, favorita: nueva })
+        });
+        t.favorita = nueva;
+        if (state.onlyFavs && !nueva) applyFilters(); // si estamos en “Mis favoritas”, refrescamos
+      }catch(e){ /* opcional: revertir UI */ }
+    };
+    tdStar.appendChild(star);
+    tr.appendChild(tdStar);
+
+    // nombre (click = seleccionar)
+    const tdName = document.createElement('td');
+    tdName.textContent = t.nombre || '(Sin nombre)';
+    tr.appendChild(tdName);
+
+    // clase/categoria
+    const tdCc = document.createElement('td');
+    tdCc.textContent = [t.clase||'', t.categoria||''].filter(Boolean).join(' / ');
+    tr.appendChild(tdCc);
+
+    // etiquetas (badges)
+    const tdTags = document.createElement('td');
+    (t.etiquetas||[]).forEach(e=>{
+      const b = document.createElement('span');
+      b.className='badge'; b.textContent='#'+e;
+      tdTags.appendChild(b);
+    });
+    tr.appendChild(tdTags);
+
+    // usos
+    const tdUsos = document.createElement('td');
+    tdUsos.textContent = t.usos || 0;
+    tr.appendChild(tdUsos);
+
+    // seleccionar plantilla
+    tr.onclick = async ()=>{
+      state.selected = t;
+      fillEditor(t);
+      // registrar uso (incrementa en Notion)
+      try{
+        const res = await fetch('/api/templates-usage', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ pageId: t.id })
+        });
+        const js = await res.json();
+        if (js?.ok){
+          t.usos = js.usos;
+          tdUsos.textContent = t.usos;
+        }
+      }catch(e){}
+      document.getElementById('editor').scrollIntoView({behavior:'smooth', block:'center'});
+    };
+
+    tb.appendChild(tr);
+  });
+}
+
+function fillEditor(tpl){
   const nombre = $('nombre').value || '';
   const telefono = sanitizePhone($('telefono').value, true);
-  const current = $('editor').value || '';
-  $('editor').value = replacePlaceholders(current, {nombre, telefono});
+  const base = tpl?.mensaje || '';
+  const final = replacePlaceholders(base, {nombre, telefono});
+  $('editor').value = final;
+}
+
+// Controles UI de filtros
+$('buscador').addEventListener('input', applyFilters);
+$('clase').addEventListener('change', applyFilters);
+$('categoria').addEventListener('change', applyFilters);
+$('btnFavs').addEventListener('click', ()=>{
+  state.onlyFavs = !state.onlyFavs;
+  $('btnFavs').setAttribute('aria-pressed', String(state.onlyFavs));
+  applyFilters();
+});
+$('btnMasUsadas').addEventListener('click', ()=>{
+  state.orderByUsage = !state.orderByUsage;
+  $('btnMasUsadas').setAttribute('aria-pressed', String(state.orderByUsage));
+  applyFilters();
 });
 
-$('btnEnviar').addEventListener('click', ()=>{
+// Editor — re-sustituir
+$('btnPreview').addEventListener('click', ()=>{
+  const nombre = $('nombre').value || '';
+  const telefono = sanitizePhone($('telefono').value, true);
+  $('editor').value = replacePlaceholders($('editor').value || '', {nombre, telefono});
+});
+
+// Enviar
+$('btnEnviar').addEventListener('click', async ()=>{
   const tel = sanitizePhone($('telefono').value,true);
   const msg = $('editor').value || '';
   if (!tel){ alert('Completa el teléfono'); return; }
   if (!msg){ alert('Escribe o carga un mensaje'); return; }
+
+  // registrar uso si hay plantilla seleccionada
+  if (state.selected){
+    try{ await fetch('/api/templates-usage', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ pageId: state.selected.id }) }); }catch(e){}
+  }
+
   const url = `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
   window.open(url, '_blank');
 });
 
-// Eventos de filtros/búsqueda
-$('buscador').addEventListener('input', applyFilters);
-$('clase').addEventListener('change', applyFilters);
-$('categoria').addEventListener('change', applyFilters);
-
 // Init
-document.addEventListener('DOMContentLoaded', ()=>{ cargarPlantillas(); });
+document.addEventListener('DOMContentLoaded', cargarPlantillas);
 </script>
 </body>
 </html>
