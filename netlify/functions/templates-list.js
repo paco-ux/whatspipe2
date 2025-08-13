@@ -11,6 +11,9 @@ function pageToTemplate(page) {
     clase: p.Clase?.select?.name || "",
     categoria: p.Categoria?.select?.name || "",
     etiquetas: (p.Etiquetas?.multi_select || []).map(t => t.name),
+    favorita: !!p.Favorita?.checkbox,
+    usos: p.Usos?.number || 0,
+    ultimoUso: p["Último uso"]?.date?.start || null,
     mensaje: (p.Mensaje?.rich_text || []).map(t => t.plain_text).join("") || ""
   };
 }
