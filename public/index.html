@@ -1,409 +1,231 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>WhatsPipe — MVP</title>
-<style>
-:root{--bg:#0b1220;--card:#111a2d;--muted:#91a4bd;--br:#263653;--acc:#4cc38a}
-*{box-sizing:border-box}
-body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;background:var(--bg);color:#e6edf3}
-.wrap{max-width:1000px;margin:0 auto;padding:20px}
-h1{margin:0 0 10px;color:#a5d6ff}
-.card{background:var(--card);border:1px solid var(--br);border-radius:12px;padding:16px;margin:12px 0}
-label{display:block;font-size:12px;color:#c8d6ea;margin:8px 0 6px}
-input,select,textarea,button{font:inherit}
-input,select,textarea{width:100%;padding:10px;border:1px solid var(--br);border-radius:10px;background:#0f1726;color:#e6edf3}
-textarea{min-height:140px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-.btn{background:var(--acc);color:#032016;font-weight:700;border:0;border-radius:10px;padding:14px;cursor:pointer}
-.small{color:var(--muted);font-size:12px}
-.err{display:none;background:#4c1d1d;border:1px solid #7f1d1d;color:#ffd2d2;border-radius:8px;padding:10px;margin-top:8px}
-.ok{display:none;background:#0e4026;border:1px solid #1b6f46;color:#dcffe7;border-radius:8px;padding:10px;margin-top:8px}
-.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.pill{background:#13223a;border:1px solid #2b3e61;border-radius:999px;padding:6px 10px;color:#cfe;cursor:pointer}
-.pill[aria-pressed="true"]{outline:2px solid #3f5c8a}
-#tplList{margin-top:12px;border:1px solid #2b3e61;border-radius:10px;overflow:auto;max-height:420px}
-.tbl{width:100%;border-collapse:collapse}
-.tbl th,.tbl td{padding:10px;border-bottom:1px solid #21324e}
-.tbl th{font-size:12px;color:#a9c4e8;text-align:left;background:#0f1828;position:sticky;top:0}
-.tbl tr:hover{background:#0f1726}
-.badge{font-size:11px;background:#13223a;border:1px solid #2b3e61;border-radius:999px;padding:2px 8px;color:#cfe;margin-right:6px;display:inline-block}
-.star{cursor:pointer;user-select:none;font-size:18px}
-.star.on{color:#ffd166}
-.star.off{color:#48607f}
-#editor{background:#0f1726;border:1px dashed #2b3e61;border-radius:10px}
-.link-empty{display:inline-block;margin-top:10px;font-size:13px;color:#a5d6ff;text-decoration:underline;cursor:pointer}
-.link-empty:hover{opacity:.9}
-.notice{font-size:13px;color:#a5d6ff;margin-top:6px}
-</style>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>WhatsPipe</title>
+  <style>
+    :root{
+      --bg:#0f1924;
+      --card:#111f2b;
+      --muted:#6f879a;
+      --txt:#e5f1ff;
+      --accent:#2dd4bf;
+      --accent-2:#22c55e;
+      --danger:#ef4444;
+      --line:#1e3141;
+      --pill:#0e2434;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      background:var(--bg);
+      color:var(--txt);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      line-height:1.35;
+    }
+    .container{max-width:1100px;margin:24px auto;padding:0 16px}
+    h1{font-size:28px;margin:10px 0 20px}
+    h2{font-size:22px;margin:28px 0 12px}
+    .card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:18px;
+      margin-bottom:16px;
+    }
+    label{display:block;font-size:13px;color:var(--muted);margin:6px 0 6px}
+    input,select,textarea,button{
+      font:inherit;color:inherit;
+    }
+    input,select,textarea{
+      width:100%;
+      background:#0c1721;
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:12px 14px;
+      outline:none;
+      color:var(--txt);
+    }
+    input::placeholder, textarea::placeholder{color:#88a2b7;opacity:.55}
+    select:disabled{opacity:.6}
+    .row{display:grid;gap:16px}
+    .row-2{grid-template-columns:1.2fr .8fr}
+    .row-3{grid-template-columns:1fr 1fr 1fr}
+    @media (max-width:860px){
+      .row-2,.row-3{grid-template-columns:1fr}
+    }
+
+    /* Pills */
+    .pills{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px}
+    .pill{
+      display:inline-flex;align-items:center;gap:8px;
+      border-radius:999px;border:1px solid var(--line);
+      background:var(--pill);color:var(--txt);
+      padding:10px 14px;cursor:pointer;user-select:none;
+      transition:all .15s ease;
+    }
+    .pill.active{outline:2px solid var(--accent)}
+    .pill .icon{font-size:18px}
+    .muted{color:var(--muted)}
+    small{color:var(--muted)}
+    .right{display:flex;justify-content:flex-end}
+
+    /* Table (scroll interno) */
+    .table-wrap{
+      background:#0c1721;border:1px solid var(--line);
+      border-radius:12px;overflow:hidden;
+      max-height:360px; /* scroll interno */
+      overflow-y:auto;margin-top:12px;
+    }
+    table{width:100%;border-collapse:collapse}
+    thead th{
+      position:sticky;top:0;background:#0d1a25;
+      font-weight:600;color:#a9c3d6;z-index:1;
+      text-align:left;padding:12px 14px;border-bottom:1px solid var(--line)
+    }
+    tbody td{
+      padding:12px 14px;border-bottom:1px solid var(--line);
+      vertical-align:top;
+    }
+    tbody tr{cursor:pointer}
+    tbody tr:hover{background:#0e1d29}
+    .tag{display:inline-block;background:#0d2536;border:1px solid #0f3246;
+      color:#9fd3ff;border-radius:999px;padding:3px 8px;margin:2px;font-size:12px}
+
+    /* Buttons */
+    .btn{
+      border:none;border-radius:12px;padding:12px 16px;
+      background:#153449;color:#eafff8;font-weight:600;cursor:pointer;
+      transition:transform .06s ease, background .15s ease;
+    }
+    .btn:active{transform:translateY(1px)}
+    .btn-primary{background:var(--accent-2);color:#052012}
+    .btn-outline{background:transparent;border:1px solid var(--line)}
+    .btn-block{width:100%}
+    .btn-small{padding:6px 10px;border-radius:8px;font-size:13px}
+
+    .actions{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    @media (max-width:720px){.actions{grid-template-columns:1fr}}
+    .link{font-size:13px;color:#a7f3d0;text-decoration:underline;cursor:pointer}
+
+    textarea{min-height:140px;resize:vertical}
+
+    .header{
+      display:flex;align-items:center;gap:14px;margin-bottom:6px
+    }
+    .logo{height:36px;width:auto}
+    .subtitle{color:#a6bfce}
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>WhatsPipe — MVP</h1>
-
-  <!-- 1) Cargar desde Pipedrive -->
-  <div class="card">
-    <h3>1) Cargar datos desde Pipedrive</h3>
-    <div class="grid2">
-      <div>
-        <label for="pdurl">Link o ID de Pipedrive</label>
-        <input id="pdurl" placeholder="https://empresa.pipedrive.com/deal/12345 o 12345"/>
-        <div class="small">Acepta <b>deal/person/organization</b> o solo el número (por defecto persona).</div>
-      </div>
-      <div>
-        <label>&nbsp;</label>
-        <button class="btn" id="btnPd">Cargar desde Pipedrive</button>
-        <div style="margin-top:8px"><label><input type="checkbox" id="addmx" checked/> Agregar +52 si falta (MX)</label></div>
-      </div>
+  <div class="container">
+    <div class="header">
+      <img class="logo" src="./logo.png" alt="WhatsPipe" onerror="this.style.display='none'">
+      <h1>WhatsPipe</h1>
     </div>
-    <div id="pdOk" class="ok"></div>
-    <div id="pdErr" class="err"></div>
+    <p class="subtitle">Usa plantillas de Notion y datos de tu deal en Pipedrive para generar mensajes listos para WhatsApp.</p>
+
+    <!-- 1) Cargar datos desde Pipedrive -->
+    <section class="card">
+      <h2>1) Cargar datos desde Pipedrive</h2>
+      <div class="row row-2">
+        <div>
+          <label for="pipedriveId">Link o ID de Pipedrive</label>
+          <input id="pipedriveId" placeholder="https://empresa.pipedrive.com/deal/12345 o 12345" />
+          <small>Puede ser URL o solo el número del deal.</small>
+        </div>
+        <div class="right" style="align-items:flex-end">
+          <button id="loadFromPipe" class="btn btn-primary">Cargar desde Pipedrive</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2) Datos del contacto -->
+    <section class="card">
+      <h2>2) Datos del contacto</h2>
+      <div class="row row-2">
+        <div>
+          <label for="contactName">Nombre</label>
+          <input id="contactName" placeholder="Ej. Ana López" />
+        </div>
+        <div>
+          <label for="contactPhone">Teléfono</label>
+          <input id="contactPhone" placeholder="Ej. 5512345678 o 521234567890" />
+          <small>Se sanea automáticamente; si ingresas 10 dígitos se enviará con +52.</small>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3) Plantillas (Notion) -->
+    <section class="card">
+      <h2>3) Plantillas (desde Notion)</h2>
+
+      <div class="row row-3">
+        <div>
+          <label for="searchByName">Buscar por nombre</label>
+          <input id="searchByName" placeholder="Escribe para filtrar…" />
+        </div>
+
+        <div>
+          <label for="filterClass">Clase</label>
+          <select id="filterClass" disabled>
+            <option value="">— Selecciona —</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="filterCategory">Categoría</label>
+          <select id="filterCategory" disabled>
+            <option value="">— Selecciona —</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="pills">
+        <button id="filterFavorites" class="pill" type="button" title="Mostrar solo favoritas">
+          <span class="icon">⭐</span> Mis favoritas
+        </button>
+        <button id="filterMostUsed" class="pill" type="button" title="Ordenar por más usadas">
+          <span class="icon">🔥</span> Más usadas
+        </button>
+        <span class="muted">Selecciona <b>Clase</b> y <b>Categoría</b> para ver plantillas.</span>
+      </div>
+
+      <div class="table-wrap" style="margin-top:16px">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:34%">Nombre</th>
+              <th style="width:26%">Clase/Categoría</th>
+              <th>Etiquetas</th>
+              <th style="width:80px;text-align:right">Usos</th>
+            </tr>
+          </thead>
+          <tbody id="templatesTable">
+            <tr><td colspan="4">Selecciona filtros para empezar…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 4) Mensaje -->
+    <section class="card">
+      <h2>4) Mensaje</h2>
+      <label for="messageBox" class="sr-only">Mensaje</label>
+      <textarea id="messageBox" placeholder="Aquí aparecerá el mensaje…"></textarea>
+
+      <div class="actions" style="margin-top:14px">
+        <button id="updateWithData" class="btn">Actualizar con datos</button>
+        <button id="sendWhatsApp" class="btn btn-primary">Enviar por WhatsApp</button>
+      </div>
+      <div class="right" style="margin-top:8px">
+        <a id="sendEmptyMessage" class="link" href="#">Enviar mensaje vacío</a>
+      </div>
+    </section>
   </div>
 
-  <!-- 2) Datos del contacto -->
-  <div class="card">
-    <h3>2) Datos del contacto</h3>
-    <div class="grid2">
-      <div>
-        <label for="nombre">Nombre</label>
-        <input id="nombre" placeholder="Ej. Ana López"/>
-      </div>
-      <div>
-        <label for="telefono">Teléfono</label>
-        <input id="telefono" placeholder="Ej. 5512345678 o 521234567890"/>
-        <div class="small">Se sanitiza y, si faltan dígitos de país, se añade +52 (opcional).</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 3) Filtros + acciones -->
-  <div class="card">
-    <h3>3) Plantillas (desde Notion)</h3>
-    <div class="grid3">
-      <div>
-        <label for="buscador">Buscar por nombre</label>
-        <input id="buscador" placeholder="Escribe para filtrar…"/>
-      </div>
-      <div>
-        <label for="clase">Clase</label>
-        <select id="clase">
-          <option value="">— Selecciona —</option>
-        </select>
-      </div>
-      <div>
-        <label for="categoria">Categoría</label>
-        <select id="categoria">
-          <option value="">— Selecciona —</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="notice" id="needFilters">Selecciona <b>Clase</b> y <b>Categoría</b> para ver plantillas.</div>
-
-    <div class="toolbar">
-      <button class="pill" id="btnFavs" aria-pressed="false">⭐ Mis favoritas</button>
-      <button class="pill" id="btnMasUsadas" aria-pressed="false">🔥 Más usadas</button>
-    </div>
-
-    <div id="tplOk" class="ok"></div>
-    <div id="tplErr" class="err"></div>
-
-    <div id="tplList" aria-live="polite">
-      <table class="tbl" aria-label="Plantillas">
-        <thead>
-          <tr>
-            <th style="width:32px;"></th>
-            <th>Nombre</th>
-            <th>Clase/Categoría</th>
-            <th>Etiquetas</th>
-            <th style="width:90px;">Usos</th>
-          </tr>
-        </thead>
-        <tbody id="tplBody">
-          <tr><td colspan="5" class="small" style="padding:14px">Selecciona filtros para empezar…</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-
-  <!-- 4) Editor -->
-  <div class="card">
-    <h3>4) Mensaje</h3>
-    <textarea id="editor" placeholder="Selecciona una plantilla o escribe tu mensaje aquí…"></textarea>
-    <div style="margin-top:10px">
-      <button class="btn" id="btnEnviar" style="width:100%;">Enviar por WhatsApp</button>
-      <div id="lnkVacio" class="link-empty">Enviar mensaje vacío</div>
-    </div>
-  </div>
-</div>
-
-<script>
-const $=id=>document.getElementById(id);
-const state={ all:[], filtered:[], selected:null, onlyFavs:false, orderByUsage:false };
-const PDCTX = { person:{}, deal:{}, organization:{}, flat:{} };
-
-// ---------- helpers ----------
-function sanitizePhone(raw, addMX=true){
-  let d = String(raw||'').replace(/\D/g,'');
-  if (!d) return '';
-  if (addMX && d.length===10) d = '52'+d;
-  return d.replace(/^0+/, '');
-}
-function getByPath(obj, path){
-  try{ return path.split('.').reduce((o,k)=> (o && (k in o)) ? o[k] : undefined, obj) }catch{ return undefined; }
-}
-const ALIAS = {
-  nombre:'nombre', telefono:'telefono', fecha:'fecha',
-  empresa:'organization.name', organizacion:'organization.name',
-  monto:'deal.value', moneda:'deal.currency', etapa:'deal.stage_name',
-  titulo:'deal.title', correo:'person.email'
-};
-function resolveToken(key, ctx){
-  if (ALIAS[key] && ALIAS[key] !== key) key = ALIAS[key];
-  if (key==='nombre') return ctx.nombre || '';
-  if (key==='telefono') return ctx.telefono || '';
-  if (key==='fecha') return new Date().toLocaleDateString();
-  const v = getByPath(PDCTX, key);
-  return (v!==undefined && v!==null) ? String(v) : undefined;
-}
-function replacePlaceholders(text, ctx){
-  const base = String(text||'');
-  return base.replace(/\{([^}]+)\}/g, (_, token)=>{
-    const key = token.trim().toLowerCase();
-    const val = resolveToken(key, ctx);
-    return (val!==undefined) ? val : `{${token}}`;
-  });
-}
-
-// ---------- Pipedrive ----------
-function parsePipedriveInput(input){
-  input=(input||'').trim();
-  try{
-    if (input.startsWith('http')){
-      const u = new URL(input);
-      const parts = u.pathname.split('/').filter(Boolean);
-      if (parts.length>=2){
-        const entityMap={deal:'deal',deals:'deal',person:'person',persons:'person',organization:'organization',organizations:'organization'};
-        const entity = entityMap[parts[0].toLowerCase()] || 'person';
-        const id = parts[1].replace(/\D/g,'');
-        if (id) return {entity,id};
-      }
-    }
-  }catch(e){}
-  if (/^\d+$/.test(input)) return {entity:'person', id:input};
-  return null;
-}
-$('btnPd').onclick = async ()=>{
-  $('pdErr').style.display='none'; $('pdOk').style.display='none';
-  const parsed = parsePipedriveInput($('pdurl').value);
-  if (!parsed){ $('pdErr').textContent='No pude interpretar el link o ID.'; $('pdErr').style.display='block'; return; }
-  try{
-    const r = await fetch(`/api/pipedrive?entity=${encodeURIComponent(parsed.entity)}&id=${encodeURIComponent(parsed.id)}`);
-    const j = await r.json();
-    if (!j.ok) throw new Error(j.error||'Respuesta no OK');
-
-    $('nombre').value = j.data.name || '';
-    $('telefono').value = sanitizePhone(j.data.phone, $('addmx').checked);
-
-    PDCTX.person = j.data.person || {};
-    PDCTX.deal = j.data.deal || {};
-    PDCTX.organization = j.data.organization || {};
-    PDCTX.flat = j.data.flat || {};
-
-    $('pdOk').textContent = `Datos cargados (${parsed.entity} #${parsed.id})`;
-    $('pdOk').style.display='block';
-
-    if (state.selected) fillEditor(state.selected);
-  }catch(e){
-    $('pdErr').textContent = 'Error: '+(e.message||e);
-    $('pdErr').style.display='block';
-  }
-};
-
-// ---------- Notion Facets ----------
-async function cargarFacets(){
-  try{
-    const r = await fetch('/api/templates-facets');
-    const j = await r.json();
-    if (!j.ok) throw new Error(j.error||'No OK');
-
-    const sClase=$('clase'), sCat=$('categoria');
-    const make = (arr)=>['<option value="">— Selecciona —</option>', ...arr.map(v=>`<option>${v}</option>`)].join('');
-    sClase.innerHTML = make(j.data.clases || []);
-    sCat.innerHTML = make(j.data.categorias || []);
-  }catch(e){
-    $('tplErr').textContent = 'No pude cargar las opciones de Clase/Categoría: '+(e.message||e);
-    $('tplErr').style.display='block';
-  }
-}
-
-// ---------- Notion list (filtrado en servidor) ----------
-async function cargarPlantillas(){
-  const cls = $('clase').value.trim();
-  const cat = $('categoria').value.trim();
-  if (!cls || !cat){
-    $('needFilters').style.display='block';
-    const tb = $('tplBody'); tb.innerHTML = `<tr><td colspan="5" class="small" style="padding:14px">Selecciona filtros para empezar…</td></tr>`;
-    return;
-  }
-  $('needFilters').style.display='none';
-  try{
-    const params = new URLSearchParams({ class: cls, category: cat });
-    const q = ($('buscador').value||'').trim();
-    if (q) params.set('q', q);
-    const r = await fetch('/api/templates-list?'+params.toString());
-    const j = await r.json();
-    if(!j.ok) throw new Error(j.error||'No OK');
-
-    state.all = j.data || [];
-    $('tplOk').textContent = `Plantillas cargadas: ${state.all.length}`;
-    $('tplOk').style.display='block';
-    $('tplErr').style.display='none';
-    applyFilters(); // aplica favs/orden si corresponde
-  }catch(e){
-    $('tplErr').textContent = 'Error cargando plantillas: '+(e.message||e);
-    $('tplErr').style.display='block';
-    $('tplOk').style.display='none';
-  }
-}
-
-function applyFilters(){
-  const q=($('buscador').value||'').toLowerCase().trim();
-
-  let arr = state.all.filter(t=>{
-    if (state.onlyFavs && !t.favorita) return false;
-    if (q && !String(t.nombre||'').toLowerCase().includes(q)) return false;
-    return true;
-  });
-  if (state.orderByUsage){
-    arr = arr.slice().sort((a,b)=>(b.usos||0)-(a.usos||0));
-  }
-  state.filtered = arr;
-  renderTemplateTable();
-}
-
-function renderTemplateTable(){
-  const tb = $('tplBody');
-  tb.innerHTML = '';
-  if (!state.filtered.length){
-    tb.innerHTML = `<tr><td colspan="5" class="small" style="padding:14px">No hay resultados con el filtro actual.</td></tr>`;
-    return;
-  }
-  state.filtered.forEach(t=>{
-    const tr = document.createElement('tr');
-
-    const tdStar = document.createElement('td');
-    const star = document.createElement('span');
-    star.className = 'star ' + (t.favorita ? 'on':'off');
-    star.textContent = '★';
-    star.title = t.favorita ? 'Quitar de favoritas':'Marcar como favorita';
-    star.onclick = async (ev)=>{
-      ev.stopPropagation();
-      const nueva = !t.favorita;
-      star.className = 'star ' + (nueva?'on':'off');
-      try{
-        await fetch('/api/templates-favorite', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ pageId: t.id, favorita: nueva })
-        });
-        t.favorita = nueva;
-        if (state.onlyFavs && !nueva) applyFilters();
-      }catch(e){}
-    };
-    tdStar.appendChild(star);
-    tr.appendChild(tdStar);
-
-    const tdName = document.createElement('td');
-    tdName.textContent = t.nombre || '(Sin nombre)';
-    tr.appendChild(tdName);
-
-    const tdCc = document.createElement('td');
-    tdCc.textContent = [t.clase||'', t.categoria||''].filter(Boolean).join(' / ');
-    tr.appendChild(tdCc);
-
-    const tdTags = document.createElement('td');
-    (t.etiquetas||[]).forEach(e=>{
-      const b = document.createElement('span');
-      b.className='badge'; b.textContent='#'+e;
-      tdTags.appendChild(b);
-    });
-    tr.appendChild(tdTags);
-
-    const tdUsos = document.createElement('td');
-    tdUsos.textContent = t.usos || 0;
-    tr.appendChild(tdUsos);
-
-    tr.onclick = async ()=>{
-      state.selected = t;
-      fillEditor(t);
-      try{
-        const res = await fetch('/api/templates-usage', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ pageId: t.id })
-        });
-        const js = await res.json();
-        if (js?.ok){ t.usos = js.usos; tdUsos.textContent = t.usos; }
-      }catch(e){}
-      document.getElementById('editor').scrollIntoView({behavior:'smooth', block:'center'});
-    };
-
-    tb.appendChild(tr);
-  });
-}
-
-function fillEditor(tpl){
-  const nombre = $('nombre').value || '';
-  const telefono = sanitizePhone($('telefono').value, true);
-  const base = tpl?.mensaje || '';
-  const final = replacePlaceholders(base, {nombre, telefono});
-  $('editor').value = final;
-}
-
-// Controles UI
-$('buscador').addEventListener('input', ()=> {
-  // si ya hay filtros activos, recarga desde servidor con q
-  const cls=$('clase').value.trim(), cat=$('categoria').value.trim();
-  if (cls && cat) cargarPlantillas(); else applyFilters();
-});
-$('clase').addEventListener('change', cargarPlantillas);
-$('categoria').addEventListener('change', cargarPlantillas);
-$('btnFavs').addEventListener('click', ()=>{
-  state.onlyFavs = !state.onlyFavs;
-  $('btnFavs').setAttribute('aria-pressed', String(state.onlyFavs));
-  applyFilters();
-});
-$('btnMasUsadas').addEventListener('click', ()=>{
-  state.orderByUsage = !state.orderByUsage;
-  $('btnMasUsadas').setAttribute('aria-pressed', String(state.orderByUsage));
-  applyFilters();
-});
-
-// Enviar con texto del editor
-$('btnEnviar').addEventListener('click', async ()=>{
-  const tel = sanitizePhone($('telefono').value,true);
-  const msg = $('editor').value || '';
-  if (!tel){ alert('Completa el teléfono'); return; }
-  if (!msg){ alert('Escribe o carga un mensaje'); return; }
-
-  if (state.selected){
-    try{ await fetch('/api/templates-usage', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ pageId: state.selected.id }) }); }catch(e){}
-  }
-
-  const url = `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
-  window.open(url, '_blank');
-});
-
-// Enviar vacío
-$('lnkVacio').addEventListener('click', ()=>{
-  const tel = sanitizePhone($('telefono').value,true);
-  if (!tel){ alert('Completa el teléfono'); return; }
-  window.open(`https://wa.me/${tel}`, '_blank');
-});
-
-// Init
-document.addEventListener('DOMContentLoaded', async ()=>{
-  await cargarFacets();   // llena selectores
+  <script src="./script.js"></script>
+</body>
+</html>
