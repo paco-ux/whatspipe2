@@ -1,70 +1,77 @@
-export async function handler(event) {
-  if (event.httpMethod === 'OPTIONS') return { statusCode: 204 };
+// netlify/functions/pipedrive.js
+// Devuelve nombre y teléfono principal de un deal en Pipedrive.
+// Env vars: PIPEDRIVE_DOMAIN, PIPEDRIVE_API_TOKEN
+// Uso: /api/pipedrive?deal=12345  o  /api/pipedrive?deal=https://empresa.pipedrive.com/deal/12345
+
+const pickDigits = (s = '') => (s || '').replace(/[^\d]/g, '');
+
+const getDealId = (raw = '') => {
+  // soporta URL o id
+  const m = String(raw).match(/deal\/(\d+)/);
+  if (m) return m[1];
+  const onlyDigits = String(raw).match(/(\d{2,})/);
+  return onlyDigits ? onlyDigits[1] : null;
+};
+
+export default async (req, res) => {
   try {
-    const token = process.env.PIPEDRIVE_API_TOKEN;
-    if (!token) return json(500, { ok:false, error:'Missing PIPEDRIVE_API_TOKEN' });
+    const { deal } = req.query || {};
+    const PIPEDRIVE_DOMAIN = process.env.PIPEDRIVE_DOMAIN;
+    const PIPEDRIVE_API_TOKEN = process.env.PIPEDRIVE_API_TOKEN;
 
-    const qs = event.queryStringParameters || {};
-    const entity = (qs.entity || 'person').toLowerCase();
-    const id = String(qs.id || '').replace(/\D/g,'');
-    if (!id) return json(400, { ok:false, error:'Missing id' });
+    if (!PIPEDRIVE_DOMAIN || !PIPEDRIVE_API_TOKEN) {
+      return res.status(500).json({ ok: false, error: 'Faltan PIPEDRIVE_DOMAIN o PIPEDRIVE_API_TOKEN' });
+    }
+    const dealId = getDealId(deal);
+    if (!dealId) return res.status(400).json({ ok: false, error: 'Parámetro "deal" inválido' });
 
-    const base = 'https://api.pipedrive.com/v1';
-    const add = (p) => `${base}${p}${p.includes('?')?'&':'?'}api_token=${encodeURIComponent(token)}`;
-    const getJSON = async (u) => {
-      const r = await fetch(u);
-      if(!r.ok) throw new Error(`HTTP ${r.status} ${r.statusText}`);
-      return r.json();
-    };
+    const base = `https://${PIPEDRIVE_DOMAIN}.pipedrive.com/api/v1`;
 
-    const fetchPerson = async (pid)=> (await getJSON(add(`/persons/${pid}`))).data || {};
-    const fetchDeal   = async (did)=> (await getJSON(add(`/deals/${did}`))).data || {};
-    const fetchOrg    = async (oid)=> (await getJSON(add(`/organizations/${oid}`))).data || {};
+    // 1) Deal
+    const dResp = await fetch(`${base}/deals/${dealId}?api_token=${PIPEDRIVE_API_TOKEN}`);
+    const dJson = await dResp.json();
+    if (!dResp.ok || !dJson?.data) {
+      return res.status(404).json({ ok: false, error: 'Deal no encontrado' });
+    }
+    const dealData = dJson.data;
 
-    let person = {}, deal = {}, organization = {};
-    if (entity === 'deal') {
-      deal = await fetchDeal(id);
-      if (deal?.person_id?.value || deal?.person_id?.id) person = await fetchPerson(deal.person_id.value || deal.person_id.id);
-      if (deal?.org_id?.value || deal?.org_id?.id) organization = await fetchOrg(deal.org_id.value || deal.org_id.id);
-    } else if (entity === 'organization') {
-      organization = await fetchOrg(id);
-    } else {
-      person = await fetchPerson(id);
-      if (person?.org_id?.value || person?.org_id?.id) organization = await fetchOrg(person.org_id.value || person.org_id.id);
+    // 2) Persona principal
+    let personName = '';
+    let phone = '';
+
+    const personId = dealData.person_id?.value || dealData.person_id || null;
+    if (personId) {
+      const pResp = await fetch(`${base}/persons/${personId}?api_token=${PIPEDRIVE_API_TOKEN}`);
+      const pJson = await pResp.json();
+      if (pResp.ok && pJson?.data) {
+        personName = pJson.data.name || '';
+        // Phone puede venir como array
+        const phoneField = Array.isArray(pJson.data.phone) ? pJson.data.phone[0] : pJson.data.phone;
+        phone = (typeof phoneField === 'object' ? phoneField?.value : phoneField) || '';
+      }
     }
 
-    const name = person?.name || deal?.person_name || deal?.title || organization?.name || '';
-    const phone =
-      (Array.isArray(person?.phone) && (person.phone[0]?.value || person.phone[0])) ||
-      person?.phone || '';
+    // Fallback: intenta por participante si no hubo phone
+    if (!phone && dealData.participants_count > 0) {
+      const partsResp = await fetch(`${base}/deals/${dealId}/participants?api_token=${PIPEDRIVE_API_TOKEN}`);
+      const partsJson = await partsResp.json();
+      const first = partsJson?.data?.[0];
+      if (first?.person?.name) personName = personName || first.person.name;
+      if (first?.person?.phone) phone = phone || first.person.phone;
+    }
 
-    const flat = {
-      person: {
-        id: person?.id,
-        name: person?.name,
-        email: Array.isArray(person?.email) ? (person.email[0]?.value || person.email[0]) : person?.email,
-        phone: Array.isArray(person?.phone) ? (person.phone[0]?.value || person.phone[0]) : person?.phone
-      },
-      deal: {
-        id: deal?.id,
-        title: deal?.title,
-        value: deal?.value,
-        currency: deal?.currency,
-        stage_id: deal?.stage_id,
-        stage_name: deal?.stage_name
-      },
-      organization: {
-        id: organization?.id,
-        name: organization?.name
-      }
-    };
+    // Saneado simple del teléfono, no agregamos país aquí; lo hará el front si se marca la casilla.
+    const cleanPhone = pickDigits(phone);
 
-    return json(200, {
-      ok:true,
-      data: { name: name || '', phone: String(phone||''), person, deal, organization, flat }
+    return res.status(200).json({
+      ok: true,
+      data: {
+        name: personName || '',
+        phone: cleanPhone || '',
+        dealTitle: dealData.title || '',
+      },
     });
   } catch (e) {
-    return json(500, { ok:false, error: String(e.message || e) });
+    return res.status(500).json({ ok: false, error: e.message || String(e) });
   }
-}
-const json=(s,o)=>({statusCode:s,headers:{'Content-Type':'application/json'},body:JSON.stringify(o)});
+};
