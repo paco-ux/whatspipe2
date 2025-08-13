@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>WhatsPipe — MVP</title>
+<style>
+:root{--bg:#0b1220;--card:#111a2d;--muted:#91a4bd;--br:#263653;--acc:#4cc38a}
+*{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;background:var(--bg);color:#e6edf3}
+.wrap{max-width:960px;margin:0 auto;padding:20px}
+h1{margin:0 0 10px;color:#a5d6ff}
+.card{background:var(--card);border:1px solid var(--br);border-radius:12px;padding:16px;margin:12px 0}
+label{display:block;font-size:12px;color:#c8d6ea;margin:8px 0 6px}
+input,select,textarea{width:100%;padding:10px;border:1px solid var(--br);border-radius:10px;background:#0f1726;color:#e6edf3}
+textarea{min-height:100px}
+.row{display:grid;grid-template-columns:1fr;gap:10px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.btn{background:var(--acc);color:#032016;font-weight:700;border:0;border-radius:10px;padding:10px 14px;cursor:pointer}
+.btn.sec{background:#213252;color:#cdd9ea}
+.small{color:var(--muted);font-size:12px}
+.preview{background:#0f1726;border:1px dashed #2b3e61;border-radius:10px;padding:12px;min-height:80px;white-space:pre-wrap}
+.err{display:none;background:#4c1d1d;border:1px solid #7f1d1d;color:#ffd2d2;border-radius:8px;padding:10px;margin-top:8px}
+.ok{display:none;background:#0e4026;border:1px solid #1b6f46;color:#dcffe7;border-radius:8px;padding:10px;margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>WhatsPipe — MVP</h1>
+
+  <div class="card">
+    <h3>1) Datos del contacto</h3>
+    <div class="grid2">
+      <div>
+        <label for="nombre">Nombre</label>
+        <input id="nombre" placeholder="Ej. Ana López"/>
+      </div>
+      <div>
+        <label for="telefono">Teléfono</label>
+        <input id="telefono" placeholder="Ej. 5512345678 o 521234567890"/>
+        <div class="small">Se sanitiza y, si faltan dígitos de país, se puede añadir +52 (MX).</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>2) Seleccionar plantilla (desde Notion)</h3>
+    <div class="grid2">
+      <div>
+        <label for="plantilla">Plantilla</label>
+        <select id="plantilla"><option value="">Cargando…</option></select>
+      </div>
+      <div>
+        <label for="buscador">Buscar por nombre</label>
+        <input id="buscador" placeholder="Escribe para filtrar…"/>
+      </div>
+    </div>
+    <div class="grid2" style="margin-top:8px">
+      <div>
+        <label for="clase">Clase</label>
+        <select id="clase"><option value="">Todas</option></select>
+      </div>
+      <div>
+        <label for="categoria">Categoría</label>
+        <select id="categoria"><option value="">Todas</option></select>
+      </div>
+    </div>
+    <div id="tplOk" class="ok"></div>
+    <div id="tplErr" class="err"></div>
+  </div>
+
+  <div class="card">
+    <h3>3) Vista previa del mensaje</h3>
+    <label for="libre">Mensaje libre (opcional)</label>
+    <textarea id="libre" placeholder="Escribe desde cero si no quieres usar plantilla"></textarea>
+
+    <label>Generado</label>
+    <div id="preview" class="preview">Selecciona una plantilla o escribe un mensaje.</div>
+
+    <div class="row" style="margin-top:10px">
+      <button class="btn" id="btnPreview">Generar vista previa</button>
+      <button class="btn sec" id="btnEnviar">Enviar por WhatsApp</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const state={ all:[], filtered:[] };
+
+function sanitizePhone(raw, addMX=true){
+  let d = String(raw||'').replace(/\D/g,'');
+  if (!d) return '';
+  // Si tiene 10 dígitos (MX local), añade 52
+  if (addMX && d.length===10) d = '52'+d;
+  // Si empieza con 0s, límpialos
+  d = d.replace(/^0+/, '');
+  return d;
+}
+
+function replacePlaceholders(text, ctx){
+  return String(text||'')
+    .replace(/\{nombre\}/gi, ctx.nombre || '{nombre}')
+    .replace(/\{telefono\}/gi, ctx.telefono || '{telefono}')
+    .replace(/\{fecha\}/gi, new Date().toLocaleDateString());
+}
+
+function renderSelects(){
+  // Clase/Categoría
+  const clases=[...new Set(state.all.map(x=>x.clase).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  const cats=[...new Set(state.all.map(x=>x.categoria).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
+  const sClase=$('clase'), sCat=$('categoria');
+  const keepC=sClase.value, keepK=sCat.value;
+  sClase.innerHTML='<option value="">Todas</option>'+clases.map(v=>`<option>${v}</option>`).join('');
+  sCat.innerHTML='<option value="">Todas</option>'+cats.map(v=>`<option>${v}</option>`).join('');
+  if ([...sClase.options].some(o=>o.value===keepC)) sClase.value=keepC;
+  if ([...sCat.options].some(o=>o.value===keepK)) sCat.value=keepK;
+}
+
+function renderPlantillas(){
+  const sel=$('plantilla');
+  const keep=sel.value;
+  sel.innerHTML='';
+  const opt0=document.createElement('option'); opt0.value=''; opt0.textContent='-- Selecciona una plantilla --';
+  sel.appendChild(opt0);
+  state.filtered.forEach(t=>{
+    const o=document.createElement('option');
+    o.value=t.id; o.dataset.mensaje=t.mensaje||''; o.textContent=`${t.nombre}${t.clase?` · ${t.clase}`:''}${t.categoria?` · ${t.categoria}`:''}`;
+    sel.appendChild(o);
+  });
+  if ([...sel.options].some(o=>o.value===keep)) sel.value=keep;
+}
+
+function applyFilters(){
+  const q=($('buscador').value||'').toLowerCase().trim();
+  const c=($('clase').value||'').toLowerCase().trim();
+  const k=($('categoria').value||'').toLowerCase().trim();
+  state.filtered = state.all.filter(t=>{
+    if (c && (t.clase||'').toLowerCase()!==c) return false;
+    if (k && (t.categoria||'').toLowerCase()!==k) return false;
+    if (q && !String(t.nombre||'').toLowerCase().includes(q)) return false;
+    return true;
+  });
+  renderPlantillas();
+}
+
+async function cargarPlantillas(){
+  try{
+    const r = await fetch('/api/templates-list');
+    const j = await r.json();
+    if(!j.ok) throw new Error(j.error||'No OK');
+    state.all = j.data || [];
+    $('tplOk').textContent = `Plantillas cargadas: ${state.all.length}`;
+    $('tplOk').style.display='block';
+    $('tplErr').style.display='none';
+    renderSelects();
+    state.filtered = state.all.slice();
+    renderPlantillas();
+  }catch(e){
+    $('tplErr').textContent = 'Error cargando plantillas: '+(e.message||e);
+    $('tplErr').style.display='block';
+    $('tplOk').style.display='none';
+  }
+}
+
+function generarPreview(){
+  const nombre=$('nombre').value||'{nombre}';
+  const telefono=sanitizePhone($('telefono').value,true);
+  const libre=$('libre').value.trim();
+  const sel=$('plantilla');
+  const tplMsg = sel.selectedOptions[0]?.dataset.mensaje || '';
+  const base = libre || tplMsg || '';
+  const final = replacePlaceholders(base, {nombre, telefono});
+  $('preview').textContent = final || '...';
+}
+
+$('buscador').addEventListener('input', applyFilters);
+$('clase').addEventListener('change', applyFilters);
+$('categoria').addEventListener('change', applyFilters);
+$('plantilla').addEventListener('change', generarPreview);
+$('btnPreview').addEventListener('click', generarPreview);
+
+$('btnEnviar').addEventListener('click', ()=>{
+  const tel = sanitizePhone($('telefono').value,true);
+  const msg = $('preview').textContent || '';
+  if (!tel){ alert('Completa el teléfono'); return; }
+  if (!msg){ alert('Genera la vista previa'); return; }
+  const url = `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
+  window.open(url, '_blank');
+});
+
+// Inicial
+document.addEventListener('DOMContentLoaded', ()=>{ cargarPlantillas(); });
+</script>
+</body>
+</html>
