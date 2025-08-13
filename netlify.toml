@@ -1,0 +1,15 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+# Pipedrive (opcional si ya lo usas)
+[[redirects]]
+  from = "/api/pipedrive"
+  to = "/.netlify/functions/pipedrive"
+  status = 200
+
+# Plantillas (Notion - solo lectura)
+[[redirects]]
+  from = "/api/templates-list"
+  to = "/.netlify/functions/templates-list"
+  status = 200
