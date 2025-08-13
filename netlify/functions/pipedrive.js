@@ -11,36 +11,58 @@ export async function handler(event) {
 
     const base = 'https://api.pipedrive.com/v1';
     const add = (p) => `${base}${p}${p.includes('?')?'&':'?'}api_token=${encodeURIComponent(token)}`;
-
     const getJSON = async (u) => {
-      const r = await fetch(u); if(!r.ok) throw new Error(`HTTP ${r.status} ${r.statusText}`);
+      const r = await fetch(u);
+      if(!r.ok) throw new Error(`HTTP ${r.status} ${r.statusText}`);
       return r.json();
     };
 
-    async function personData(pid){
-      const p = await getJSON(add(`/persons/${pid}`));
-      const d = p.data || {};
-      const raw = (d.phone && d.phone[0] && (d.phone[0].value || d.phone[0])) || '';
-      return { name: d.name || '', phone: String(raw||''), personId: d.id || null, organizationName: d.org_name || '' };
-    }
+    const fetchPerson = async (pid)=> (await getJSON(add(`/persons/${pid}`))).data || {};
+    const fetchDeal   = async (did)=> (await getJSON(add(`/deals/${did}`))).data || {};
+    const fetchOrg    = async (oid)=> (await getJSON(add(`/organizations/${oid}`))).data || {};
 
-    let data;
+    let person = {}, deal = {}, organization = {};
     if (entity === 'deal') {
-      const d = await getJSON(add(`/deals/${id}`));
-      const deal = d.data || {};
-      data = { name: deal.person_name || deal.title || '', phone:'', personId:null, organizationName: deal.org_name || '' };
-      if (deal.person_id && (deal.person_id.value || deal.person_id.id)) {
-        data = await personData(deal.person_id.value || deal.person_id.id);
-      }
+      deal = await fetchDeal(id);
+      if (deal?.person_id?.value || deal?.person_id?.id) person = await fetchPerson(deal.person_id.value || deal.person_id.id);
+      if (deal?.org_id?.value || deal?.org_id?.id) organization = await fetchOrg(deal.org_id.value || deal.org_id.id);
     } else if (entity === 'organization') {
-      const o = await getJSON(add(`/organizations/${id}`));
-      const org = o.data || {};
-      data = { name: org.name || '', phone:'', personId:null, organizationName: org.name || '' };
+      organization = await fetchOrg(id);
     } else {
-      data = await personData(id);
+      person = await fetchPerson(id);
+      if (person?.org_id?.value || person?.org_id?.id) organization = await fetchOrg(person.org_id.value || person.org_id.id);
     }
 
-    return json(200, { ok:true, data });
+    const name = person?.name || deal?.person_name || deal?.title || organization?.name || '';
+    const phone =
+      (Array.isArray(person?.phone) && (person.phone[0]?.value || person.phone[0])) ||
+      person?.phone || '';
+
+    const flat = {
+      person: {
+        id: person?.id,
+        name: person?.name,
+        email: Array.isArray(person?.email) ? (person.email[0]?.value || person.email[0]) : person?.email,
+        phone: Array.isArray(person?.phone) ? (person.phone[0]?.value || person.phone[0]) : person?.phone
+      },
+      deal: {
+        id: deal?.id,
+        title: deal?.title,
+        value: deal?.value,
+        currency: deal?.currency,
+        stage_id: deal?.stage_id,
+        stage_name: deal?.stage_name
+      },
+      organization: {
+        id: organization?.id,
+        name: organization?.name
+      }
+    };
+
+    return json(200, {
+      ok:true,
+      data: { name: name || '', phone: String(phone||''), person, deal, organization, flat }
+    });
   } catch (e) {
     return json(500, { ok:false, error: String(e.message || e) });
   }
