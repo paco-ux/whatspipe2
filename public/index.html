@@ -6,29 +6,59 @@
 <title>WhatsPipe — MVP</title>
 <style>
 :root{--bg:#0b1220;--card:#111a2d;--muted:#91a4bd;--br:#263653;--acc:#4cc38a}
-*{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;background:var(--bg);color:#e6edf3}
-.wrap{max-width:960px;margin:0 auto;padding:20px}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;background:var(--bg);color:#e6edf3}
+.wrap{max-width:1000px;margin:0 auto;padding:20px}
 h1{margin:0 0 10px;color:#a5d6ff}
 .card{background:var(--card);border:1px solid var(--br);border-radius:12px;padding:16px;margin:12px 0}
 label{display:block;font-size:12px;color:#c8d6ea;margin:8px 0 6px}
 input,select,textarea{width:100%;padding:10px;border:1px solid var(--br);border-radius:10px;background:#0f1726;color:#e6edf3}
-textarea{min-height:100px}
-.row{display:grid;grid-template-columns:1fr;gap:10px}
+textarea{min-height:140px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
 .btn{background:var(--acc);color:#032016;font-weight:700;border:0;border-radius:10px;padding:10px 14px;cursor:pointer}
 .btn.sec{background:#213252;color:#cdd9ea}
 .small{color:var(--muted);font-size:12px}
-.preview{background:#0f1726;border:1px dashed #2b3e61;border-radius:10px;padding:12px;min-height:80px;white-space:pre-wrap}
 .err{display:none;background:#4c1d1d;border:1px solid #7f1d1d;color:#ffd2d2;border-radius:8px;padding:10px;margin-top:8px}
 .ok{display:none;background:#0e4026;border:1px solid #1b6f46;color:#dcffe7;border-radius:8px;padding:10px;margin-top:8px}
+
+#tplList{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+.tpl{border:1px solid #2b3e61;border-radius:10px;padding:10px;background:#0f1726;cursor:pointer;transition:transform .08s ease}
+.tpl:hover{transform:translateY(-1px);border-color:#3f5c8a}
+.tpl h4{margin:0 0 6px;font-size:14px;color:#cfe7ff}
+.badges{display:flex;gap:6px;flex-wrap:wrap}
+.badge{font-size:11px;background:#13223a;border:1px solid #2b3e61;border-radius:999px;padding:2px 8px;color:#cfe}
+#editor{background:#0f1726;border:1px dashed #2b3e61;border-radius:10px}
+@media (max-width:900px){ #tplList{grid-template-columns:1fr 1fr} }
+@media (max-width:640px){ #tplList{grid-template-columns:1fr} }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>WhatsPipe — MVP</h1>
 
+  <!-- 1) Cargar desde Pipedrive -->
   <div class="card">
-    <h3>1) Datos del contacto</h3>
+    <h3>1) Cargar datos desde Pipedrive</h3>
+    <div class="grid2">
+      <div>
+        <label for="pdurl">Link o ID de Pipedrive</label>
+        <input id="pdurl" placeholder="https://empresa.pipedrive.com/deal/12345 o 12345"/>
+        <div class="small">Acepta <b>deal/person/organization</b> o solo el número (por defecto persona).</div>
+      </div>
+      <div>
+        <label>&nbsp;</label>
+        <button class="btn" id="btnPd">Cargar desde Pipedrive</button>
+        <div style="margin-top:8px"><label><input type="checkbox" id="addmx" checked/> Agregar +52 si falta (MX)</label></div>
+      </div>
+    </div>
+    <div id="pdOk" class="ok"></div>
+    <div id="pdErr" class="err"></div>
+  </div>
+
+  <!-- 2) Datos del contacto -->
+  <div class="card">
+    <h3>2) Datos del contacto</h3>
     <div class="grid2">
       <div>
         <label for="nombre">Nombre</label>
@@ -37,24 +67,19 @@ textarea{min-height:100px}
       <div>
         <label for="telefono">Teléfono</label>
         <input id="telefono" placeholder="Ej. 5512345678 o 521234567890"/>
-        <div class="small">Se sanitiza y, si faltan dígitos de país, se puede añadir +52 (MX).</div>
+        <div class="small">Se sanitiza y, si faltan dígitos de país, se añade +52 (opcional).</div>
       </div>
     </div>
   </div>
 
+  <!-- 3) Filtros y resultados de plantillas -->
   <div class="card">
-    <h3>2) Seleccionar plantilla (desde Notion)</h3>
-    <div class="grid2">
-      <div>
-        <label for="plantilla">Plantilla</label>
-        <select id="plantilla"><option value="">Cargando…</option></select>
-      </div>
+    <h3>3) Plantillas (desde Notion)</h3>
+    <div class="grid3">
       <div>
         <label for="buscador">Buscar por nombre</label>
         <input id="buscador" placeholder="Escribe para filtrar…"/>
       </div>
-    </div>
-    <div class="grid2" style="margin-top:8px">
       <div>
         <label for="clase">Clase</label>
         <select id="clase"><option value="">Todas</option></select>
@@ -66,18 +91,17 @@ textarea{min-height:100px}
     </div>
     <div id="tplOk" class="ok"></div>
     <div id="tplErr" class="err"></div>
+
+    <!-- Recuadro con listado de resultados -->
+    <div id="tplList"></div>
   </div>
 
+  <!-- 4) Editor (autorrelleno al elegir plantilla, siempre editable) -->
   <div class="card">
-    <h3>3) Vista previa del mensaje</h3>
-    <label for="libre">Mensaje libre (opcional)</label>
-    <textarea id="libre" placeholder="Escribe desde cero si no quieres usar plantilla"></textarea>
-
-    <label>Generado</label>
-    <div id="preview" class="preview">Selecciona una plantilla o escribe un mensaje.</div>
-
-    <div class="row" style="margin-top:10px">
-      <button class="btn" id="btnPreview">Generar vista previa</button>
+    <h3>4) Mensaje</h3>
+    <textarea id="editor" placeholder="Selecciona una plantilla o escribe tu mensaje aquí…"></textarea>
+    <div class="grid2" style="margin-top:10px">
+      <button class="btn" id="btnPreview">Actualizar con datos</button>
       <button class="btn sec" id="btnEnviar">Enviar por WhatsApp</button>
     </div>
   </div>
@@ -85,27 +109,99 @@ textarea{min-height:100px}
 
 <script>
 const $=id=>document.getElementById(id);
-const state={ all:[], filtered:[] };
 
+// Estado
+const state={ all:[], filtered:[], selectedTemplate:null };
+const PDCTX = { person:{}, deal:{}, organization:{}, flat:{} };
+
+// Utils
 function sanitizePhone(raw, addMX=true){
   let d = String(raw||'').replace(/\D/g,'');
   if (!d) return '';
-  // Si tiene 10 dígitos (MX local), añade 52
   if (addMX && d.length===10) d = '52'+d;
-  // Si empieza con 0s, límpialos
   d = d.replace(/^0+/, '');
   return d;
 }
-
-function replacePlaceholders(text, ctx){
-  return String(text||'')
-    .replace(/\{nombre\}/gi, ctx.nombre || '{nombre}')
-    .replace(/\{telefono\}/gi, ctx.telefono || '{telefono}')
-    .replace(/\{fecha\}/gi, new Date().toLocaleDateString());
+function getByPath(obj, path){
+  try{ return path.split('.').reduce((o,k)=> (o && (k in o)) ? o[k] : undefined, obj) }catch{ return undefined; }
 }
 
-function renderSelects(){
-  // Clase/Categoría
+// Alias
+const ALIAS = {
+  nombre:'nombre', telefono:'telefono', fecha:'fecha',
+  empresa:'organization.name', organizacion:'organization.name',
+  monto:'deal.value', moneda:'deal.currency', etapa:'deal.stage_name',
+  titulo:'deal.title', correo:'person.email'
+};
+
+function resolveToken(key, ctx){
+  if (ALIAS[key] && ALIAS[key] !== key) key = ALIAS[key];
+  if (key==='nombre') return ctx.nombre || '';
+  if (key==='telefono') return ctx.telefono || '';
+  if (key==='fecha') return new Date().toLocaleDateString();
+  const v = getByPath(PDCTX, key);
+  return (v!==undefined && v!==null) ? String(v) : undefined;
+}
+
+function replacePlaceholders(text, ctx){
+  const base = String(text||'');
+  return base.replace(/\{([^}]+)\}/g, (_, token)=>{
+    const key = token.trim().toLowerCase();
+    const val = resolveToken(key, ctx);
+    return (val!==undefined) ? val : `{${token}}`;
+  });
+}
+
+// Pipedrive
+function parsePipedriveInput(input){
+  input=(input||'').trim();
+  try{
+    if (input.startsWith('http')){
+      const u = new URL(input);
+      const parts = u.pathname.split('/').filter(Boolean);
+      if (parts.length>=2){
+        const entityMap={deal:'deal',deals:'deal',person:'person',persons:'person',organization:'organization',organizations:'organization'};
+        const entity = entityMap[parts[0].toLowerCase()] || 'person';
+        const id = parts[1].replace(/\D/g,'');
+        if (id) return {entity,id};
+      }
+    }
+  }catch(e){}
+  if (/^\d+$/.test(input)) return {entity:'person', id:input};
+  return null;
+}
+
+$('btnPd').onclick = async ()=>{
+  $('pdErr').style.display='none'; $('pdOk').style.display='none';
+  const parsed = parsePipedriveInput($('pdurl').value);
+  if (!parsed){ $('pdErr').textContent='No pude interpretar el link o ID.'; $('pdErr').style.display='block'; return; }
+
+  try{
+    const r = await fetch(`/api/pipedrive?entity=${encodeURIComponent(parsed.entity)}&id=${encodeURIComponent(parsed.id)}`);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error||'Respuesta no OK');
+
+    $('nombre').value = j.data.name || '';
+    $('telefono').value = sanitizePhone(j.data.phone, $('addmx').checked);
+
+    PDCTX.person = j.data.person || {};
+    PDCTX.deal = j.data.deal || {};
+    PDCTX.organization = j.data.organization || {};
+    PDCTX.flat = j.data.flat || {};
+
+    $('pdOk').textContent = `Datos cargados (${parsed.entity} #${parsed.id})`;
+    $('pdOk').style.display='block';
+
+    // Si ya hay una plantilla seleccionada, refresca el editor con datos
+    if (state.selectedTemplate) fillEditorWithTemplate(state.selectedTemplate);
+  }catch(e){
+    $('pdErr').textContent = 'Error: '+(e.message||e);
+    $('pdErr').style.display='block';
+  }
+};
+
+// Plantillas (Notion)
+function renderFacetOptions(){
   const clases=[...new Set(state.all.map(x=>x.clase).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
   const cats=[...new Set(state.all.map(x=>x.categoria).filter(Boolean))].sort((a,b)=>a.localeCompare(b));
   const sClase=$('clase'), sCat=$('categoria');
@@ -114,20 +210,6 @@ function renderSelects(){
   sCat.innerHTML='<option value="">Todas</option>'+cats.map(v=>`<option>${v}</option>`).join('');
   if ([...sClase.options].some(o=>o.value===keepC)) sClase.value=keepC;
   if ([...sCat.options].some(o=>o.value===keepK)) sCat.value=keepK;
-}
-
-function renderPlantillas(){
-  const sel=$('plantilla');
-  const keep=sel.value;
-  sel.innerHTML='';
-  const opt0=document.createElement('option'); opt0.value=''; opt0.textContent='-- Selecciona una plantilla --';
-  sel.appendChild(opt0);
-  state.filtered.forEach(t=>{
-    const o=document.createElement('option');
-    o.value=t.id; o.dataset.mensaje=t.mensaje||''; o.textContent=`${t.nombre}${t.clase?` · ${t.clase}`:''}${t.categoria?` · ${t.categoria}`:''}`;
-    sel.appendChild(o);
-  });
-  if ([...sel.options].some(o=>o.value===keep)) sel.value=keep;
 }
 
 function applyFilters(){
@@ -140,7 +222,45 @@ function applyFilters(){
     if (q && !String(t.nombre||'').toLowerCase().includes(q)) return false;
     return true;
   });
-  renderPlantillas();
+  renderTemplateList();
+}
+
+function renderTemplateList(){
+  const box = $('tplList');
+  box.innerHTML = '';
+  if (!state.filtered.length){
+    box.innerHTML = '<div class="small" style="opacity:.8">No hay resultados con el filtro actual.</div>';
+    return;
+  }
+  state.filtered.forEach(t=>{
+    const card = document.createElement('div');
+    card.className = 'tpl';
+    card.dataset.id = t.id;
+    card.dataset.mensaje = t.mensaje || '';
+    card.innerHTML = `
+      <h4>${t.nombre || '(Sin nombre)'}</h4>
+      <div class="badges">
+        ${t.clase ? `<span class="badge">${t.clase}</span>`:''}
+        ${t.categoria ? `<span class="badge">${t.categoria}</span>`:''}
+        ${(t.etiquetas||[]).slice(0,4).map(e=>`<span class="badge">#${e}</span>`).join('')}
+      </div>
+    `;
+    card.onclick = ()=> {
+      state.selectedTemplate = t;
+      fillEditorWithTemplate(t); // Autorrellena editor
+      // scroll suave hacia el editor
+      document.getElementById('editor').scrollIntoView({behavior:'smooth', block:'center'});
+    };
+    box.appendChild(card);
+  });
+}
+
+function fillEditorWithTemplate(tpl){
+  const nombre = $('nombre').value || '';
+  const telefono = sanitizePhone($('telefono').value, true);
+  const base = tpl?.mensaje || '';
+  const final = replacePlaceholders(base, {nombre, telefono});
+  $('editor').value = final;
 }
 
 async function cargarPlantillas(){
@@ -152,9 +272,9 @@ async function cargarPlantillas(){
     $('tplOk').textContent = `Plantillas cargadas: ${state.all.length}`;
     $('tplOk').style.display='block';
     $('tplErr').style.display='none';
-    renderSelects();
+    renderFacetOptions();
     state.filtered = state.all.slice();
-    renderPlantillas();
+    renderTemplateList();
   }catch(e){
     $('tplErr').textContent = 'Error cargando plantillas: '+(e.message||e);
     $('tplErr').style.display='block';
@@ -162,33 +282,30 @@ async function cargarPlantillas(){
   }
 }
 
-function generarPreview(){
-  const nombre=$('nombre').value||'{nombre}';
-  const telefono=sanitizePhone($('telefono').value,true);
-  const libre=$('libre').value.trim();
-  const sel=$('plantilla');
-  const tplMsg = sel.selectedOptions[0]?.dataset.mensaje || '';
-  const base = libre || tplMsg || '';
-  const final = replacePlaceholders(base, {nombre, telefono});
-  $('preview').textContent = final || '...';
-}
-
-$('buscador').addEventListener('input', applyFilters);
-$('clase').addEventListener('change', applyFilters);
-$('categoria').addEventListener('change', applyFilters);
-$('plantilla').addEventListener('change', generarPreview);
-$('btnPreview').addEventListener('click', generarPreview);
+// Editor
+$('btnPreview').addEventListener('click', ()=>{
+  // “Actualizar con datos” vuelve a sustituir tokens sobre el contenido actual del editor
+  const nombre = $('nombre').value || '';
+  const telefono = sanitizePhone($('telefono').value, true);
+  const current = $('editor').value || '';
+  $('editor').value = replacePlaceholders(current, {nombre, telefono});
+});
 
 $('btnEnviar').addEventListener('click', ()=>{
   const tel = sanitizePhone($('telefono').value,true);
-  const msg = $('preview').textContent || '';
+  const msg = $('editor').value || '';
   if (!tel){ alert('Completa el teléfono'); return; }
-  if (!msg){ alert('Genera la vista previa'); return; }
+  if (!msg){ alert('Escribe o carga un mensaje'); return; }
   const url = `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
   window.open(url, '_blank');
 });
 
-// Inicial
+// Eventos de filtros/búsqueda
+$('buscador').addEventListener('input', applyFilters);
+$('clase').addEventListener('change', applyFilters);
+$('categoria').addEventListener('change', applyFilters);
+
+// Init
 document.addEventListener('DOMContentLoaded', ()=>{ cargarPlantillas(); });
 </script>
 </body>
