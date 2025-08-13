@@ -17,8 +17,7 @@ input,select,textarea{width:100%;padding:10px;border:1px solid var(--br);border-
 textarea{min-height:140px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-.btn{background:var(--acc);color:#032016;font-weight:700;border:0;border-radius:10px;padding:10px 14px;cursor:pointer}
-.btn.sec{background:#213252;color:#cdd9ea}
+.btn{background:var(--acc);color:#032016;font-weight:700;border:0;border-radius:10px;padding:14px;cursor:pointer}
 .small{color:var(--muted);font-size:12px}
 .err{display:none;background:#4c1d1d;border:1px solid #7f1d1d;color:#ffd2d2;border-radius:8px;padding:10px;margin-top:8px}
 .ok{display:none;background:#0e4026;border:1px solid #1b6f46;color:#dcffe7;border-radius:8px;padding:10px;margin-top:8px}
@@ -35,6 +34,10 @@ textarea{min-height:140px}
 .star.on{color:#ffd166}
 .star.off{color:#48607f}
 #editor{background:#0f1726;border:1px dashed #2b3e61;border-radius:10px}
+
+/* enlace pequeño bajo el botón */
+.link-empty{display:inline-block;margin-top:10px;font-size:13px;color:#a5d6ff;text-decoration:underline;cursor:pointer}
+.link-empty:hover{opacity:.9}
 </style>
 </head>
 <body>
@@ -125,9 +128,9 @@ textarea{min-height:140px}
   <div class="card">
     <h3>4) Mensaje</h3>
     <textarea id="editor" placeholder="Selecciona una plantilla o escribe tu mensaje aquí…"></textarea>
-    <div class="grid2" style="margin-top:10px">
-      <button class="btn" id="btnPreview">Actualizar con datos</button>
-      <button class="btn sec" id="btnEnviar">Enviar por WhatsApp</button>
+    <div style="margin-top:10px">
+      <button class="btn" id="btnEnviar" style="width:100%;">Enviar por WhatsApp</button>
+      <div id="lnkVacio" class="link-empty">Enviar mensaje vacío</div>
     </div>
   </div>
 </div>
@@ -371,27 +374,26 @@ $('btnMasUsadas').addEventListener('click', ()=>{
   applyFilters();
 });
 
-// Editor — re-sustituir
-$('btnPreview').addEventListener('click', ()=>{
-  const nombre = $('nombre').value || '';
-  const telefono = sanitizePhone($('telefono').value, true);
-  $('editor').value = replacePlaceholders($('editor').value || '', {nombre, telefono});
-});
-
-// Enviar
+// Enviar con texto del editor
 $('btnEnviar').addEventListener('click', async ()=>{
   const tel = sanitizePhone($('telefono').value,true);
   const msg = $('editor').value || '';
   if (!tel){ alert('Completa el teléfono'); return; }
   if (!msg){ alert('Escribe o carga un mensaje'); return; }
 
-  // registrar uso si hay plantilla seleccionada
   if (state.selected){
     try{ await fetch('/api/templates-usage', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ pageId: state.selected.id }) }); }catch(e){}
   }
 
   const url = `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
   window.open(url, '_blank');
+});
+
+// Enviar mensaje vacío (sin texto)
+$('lnkVacio').addEventListener('click', ()=>{
+  const tel = sanitizePhone($('telefono').value,true);
+  if (!tel){ alert('Completa el teléfono'); return; }
+  window.open(`https://wa.me/${tel}`, '_blank');
 });
 
 // Init
