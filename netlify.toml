@@ -2,7 +2,7 @@
   publish = "public"
   functions = "netlify/functions"
 
-# Pipedrive (opcional si ya lo usas)
+# Pipedrive
 [[redirects]]
   from = "/api/pipedrive"
   to = "/.netlify/functions/pipedrive"
@@ -12,4 +12,16 @@
 [[redirects]]
   from = "/api/templates-list"
   to = "/.netlify/functions/templates-list"
+  status = 200
+
+# Marcar como favorita (Notion write)
+[[redirects]]
+  from = "/api/templates-favorite"
+  to = "/.netlify/functions/templates-favorite"
+  status = 200
+
+# Registrar uso (Notion write)
+[[redirects]]
+  from = "/api/templates-usage"
+  to = "/.netlify/functions/templates-usage"
   status = 200
